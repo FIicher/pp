@@ -2475,6 +2475,25 @@ function startTextEditing(textElement) {
         textarea.style.height = 'auto';
         textarea.style.height = textarea.scrollHeight + 'px';
     });
+
+    // Mettre à jour dynamiquement la position si le texte bouge/zoom/pan
+    window.updateTextEditAreaPosition = function(te) {
+      const canvasEl = document.getElementById('drawingCanvas');
+      const r = canvasEl.getBoundingClientRect();
+      const h = te.height || (te.fontSize || 16);
+      const sx = r.left + (((te.x || 0) * (zoomLevel || 1)) + (canvasOffset?.x || 0));
+      const sy = r.top + (((te.y || 0) - h) * (zoomLevel || 1) + (canvasOffset?.y || 0));
+      const ta = document.getElementById('textEditArea');
+      if (ta) {
+        ta.style.left = sx + 'px';
+        ta.style.top = sy + 'px';
+        ta.style.width = ((te.width || 200) * (zoomLevel || 1)) + 'px';
+        ta.style.height = ((te.height || h) * (zoomLevel || 1)) + 'px';
+        ta.style.fontSize = ((te.fontSize || 16) * (zoomLevel || 1)) + 'px';
+      }
+    };
+    // Appel initial
+    window.updateTextEditAreaPosition(textElement);
 }
 
 function finishTextEditing() {
@@ -2497,6 +2516,17 @@ function finishTextEditing() {
     if (activeTextElement) updateTextMoveControlsPosition(activeTextElement);
     redrawAll();
 }
+
+// Recalage du textarea pendant redraw si édition active
+(function(){
+  const __origRedrawHook2 = window.redrawAll;
+  window.redrawAll = function(){
+    __origRedrawHook2 && __origRedrawHook2();
+    if (textEditingActive && window.activeTextElement && typeof window.updateTextEditAreaPosition === 'function') {
+      window.updateTextEditAreaPosition(window.activeTextElement);
+    }
+  };
+})();
 
 // 21. Import de polices (PHP + JS)
 document.getElementById('fontUpload').addEventListener('change', async function(e) {
