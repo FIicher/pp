@@ -2145,7 +2145,17 @@ function createTextElement(x, y, initialText = "Texte") {
     if (window.layersPanelAPI) {
         window.layersPanelAPI.addLayerForText(textElement);
     }
-    
+    // Sélectionner et afficher immédiatement le popup au-dessus
+    if (typeof selectTextElement === 'function') {
+      selectTextElement(textElement);
+    }
+    if (typeof showTextMoveControls === 'function') {
+      showTextMoveControls(textElement);
+    }
+    if (typeof updateTextMoveControlsPosition === 'function') {
+      updateTextMoveControlsPosition(textElement);
+    }
+    redrawAll && redrawAll();
     return textElement;
 }
 
@@ -13694,6 +13704,9 @@ function performSandboxedDownload(canvas, filename) {
         } else if (layer.type === 'text' && layer.ref) {
           // Dessiner texte
           drawTextElement(ctx, layer.ref);
+          if (layer.ref === window.activeTextElement && typeof updateTextMoveControlsPosition === 'function') {
+            updateTextMoveControlsPosition(window.activeTextElement);
+          }
         } else if (layer.type === 'drawing') {
           // **CORRECTION: Dessiner trait de dessin avec les styles appropriés**
           const stroke = drawingStrokes.find(s => s.id === layer.id);
