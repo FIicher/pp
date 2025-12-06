@@ -3038,7 +3038,6 @@ function showTextMoveControls(textElement) {
     textMoveOverlay.style.background = 'rgba(0,0,0,0.6)';
     textMoveOverlay.style.padding = '4px 6px';
     textMoveOverlay.style.borderRadius = '6px';
-    textMoveOverlay.style.pointerEvents = 'none';
     const mkBtn = (icon, dir) => {
       const b = document.createElement('button');
       b.innerHTML = `<i class="fas fa-arrow-${icon}"></i>`;
@@ -3049,7 +3048,6 @@ function showTextMoveControls(textElement) {
       b.style.height = '28px';
       b.style.borderRadius = '4px';
       b.style.cursor = 'pointer';
-      b.style.pointerEvents = 'auto';
       b.title = `Déplacer ${dir}`;
       b.addEventListener('click', () => {
         const step = 5;
@@ -3079,7 +3077,6 @@ function showTextMoveControls(textElement) {
     copyBtn.style.height = '28px';
     copyBtn.style.borderRadius = '4px';
     copyBtn.style.cursor = 'pointer';
-    copyBtn.style.pointerEvents = 'auto';
     copyBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       if (activeTextElement && activeTextElement.text) {
@@ -3102,7 +3099,6 @@ function showTextMoveControls(textElement) {
     deleteBtn.style.height = '28px';
     deleteBtn.style.borderRadius = '4px';
     deleteBtn.style.cursor = 'pointer';
-    deleteBtn.style.pointerEvents = 'auto';
     deleteBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       if (!activeTextElement) return;
@@ -3126,7 +3122,6 @@ function showTextMoveControls(textElement) {
     propsBtn.style.height = '28px';
     propsBtn.style.borderRadius = '4px';
     propsBtn.style.cursor = 'pointer';
-    propsBtn.style.pointerEvents = 'auto';
     propsBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       if (!activeTextElement) return;
@@ -3155,10 +3150,7 @@ function updateTextMoveControlsPosition(textElement) {
   const textWidth = textElement.width || (textElement.measuredWidth || 100);
   const textCenterX = (textElement.x || 0) + (textWidth / 2);
   const screenX = rect.left + (textCenterX * (zoomLevel || 1) + (canvasOffset?.x || 0)) - (textMoveOverlay.offsetWidth / 2);
-  const textHeight = textElement.height || (textElement.measuredHeight || (textElement.size || 16));
-  const topYCanvas = ((textElement.y || 0) - textHeight);
-  const desiredTop = rect.top + (topYCanvas * (zoomLevel || 1)) + (canvasOffset?.y || 0) - (textMoveOverlay.offsetHeight + 8);
-  const screenY = desiredTop;
+  const screenY = rect.top + (((textElement.y || 0) * (zoomLevel || 1)) + (canvasOffset?.y || 0)) - 50; // au-dessus avec plus d'espace
   
   textMoveOverlay.style.left = `${Math.max(0, screenX)}px`; // éviter les valeurs négatives
   textMoveOverlay.style.top = `${Math.max(0, screenY)}px`;
@@ -3251,9 +3243,6 @@ document.getElementById('drawingCanvas').addEventListener('mousedown', (e) => {
   }
   if (t) {
     selectTextElement(t);
-    // activer édition tant que sélectionné
-    textToolActive = true;
-    updateTexturePanelVisibility();
     showTextMoveControls(t);
     draggingText = t;
     window.dragOffset.x = cx - t.x;
@@ -3511,105 +3500,6 @@ document.getElementById('drawingCanvas').addEventListener('mousemove', (e) => {
     redrawAll();
   }
 });
-
-// Fallback de rendu temps réel pinceau basique avec effets
-if (!window.paintPreview) {
-  window.paintPreview = (x, y) => {
-    try {
-      // Utiliser le dernier point du trait en cours si disponible
-      const stroke = window.currentLiveStroke;
-      if (!stroke) return;
-      const last = stroke.points[stroke.points.length - 1];
-      if (!last) return;
-      const tool = stroke.tool || currentTool || 'brush-basic';
-      const size = stroke.size || (window.brushSize || 5);
-      const color = stroke.color || (window.brushColor || '#000000');
-      const seed = (stroke.seed || 0) + stroke.points.length * 1000;
-
-      // Appliquer style artistique si disponible, sinon ligne simple
-      if (typeof applyArtisticBrushStyle === 'function') {
-        applyArtisticBrushStyle(ctx, last.x, last.y, x, y, tool, size, color, seed);
-      } else {
-        ctx.save();
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-        ctx.lineWidth = size;
-        ctx.strokeStyle = color;
-        ctx.beginPath();
-        ctx.moveTo(last.x, last.y);
-        ctx.lineTo(x, y);
-        ctx.stroke();
-        ctx.restore();
-      }
-      // Ajouter le point pour continuité
-      stroke.points.push({ x, y });
-    } catch (err) {
-      console.warn('paintPreview fallback error:', err);
-    }
-  };
-}
-
-// Suivi du trait en cours pendant mousedown/mousemove
-document.getElementById('drawingCanvas').addEventListener('mousedown', (e) => {
-  if (e.button !== 0) return;
-  if (currentTool?.startsWith('brush') || currentTool === 'eraser') {
-    const rect = e.target.getBoundingClientRect();
-    const cx = (e.clientX - rect.left - (canvasOffset?.x || 0)) / (zoomLevel || 1);
-    const cy = (e.clientY - rect.top - (canvasOffset?.y || 0)) / (zoomLevel || 1);
-    const p = snapToPixel(cx, cy);
-    window.currentLiveStroke = window.currentLiveStroke || { points: [], tool: currentTool, size: parseFloat(document.getElementById('brushSize')?.value || '5'), color: document.getElementById('brushColor')?.value || '#000000', seed: Date.now() };
-    window.currentLiveStroke.points.push({ x: p.x, y: p.y });
-  }
-});
-
-document.addEventListener('mouseup', () => {
-  // Finaliser le trait en cours si présent
-  if (window.currentLiveStroke && window.currentLiveStroke.points && window.currentLiveStroke.points.length > 1) {
-    if (typeof window.commitLiveStroke === 'function') {
-      window.commitLiveStroke(window.currentLiveStroke);
-    } else {
-      // Fallback: ajouter au tableau des strokes si disponible
-      if (Array.isArray(window.drawingStrokes)) {
-        const id = (Math.max(0, ...window.drawingStrokes.map(s=> s.id||0)) + 1);
-        window.drawingStrokes.push({ id, ...window.currentLiveStroke });
-      }
-    }
-  }
-  window.currentLiveStroke = null;
-});
-
-// Fallback preview des formes avec tous les gradients
-if (!window.renderShapePreview) {
-  window.renderShapePreview = (s) => {
-    try {
-      redrawAll();
-      ctx.save();
-      // Déterminer gradient si défini globalement
-      const stops = Array.isArray(window.shapeGradientStops) ? window.shapeGradientStops : null;
-      let fillStyle = '#00aaff';
-      if (stops && stops.length >= 2) {
-        const grad = ctx.createLinearGradient(s.x, s.y, s.x + s.w, s.y + s.h);
-        stops.forEach(stop => {
-          try { grad.addColorStop(stop.offset, stop.color); } catch {}
-        });
-        fillStyle = grad;
-      }
-      ctx.fillStyle = fillStyle;
-      ctx.strokeStyle = '#00aaff';
-      ctx.lineWidth = 1;
-      ctx.globalAlpha = 1.0;
-      ctx.beginPath();
-      ctx.rect(s.x, s.y, s.w, s.h);
-      ctx.fill();
-      ctx.setLineDash([4, 4]);
-      ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.restore();
-    } catch (err) {
-      console.warn('renderShapePreview fallback error:', err);
-    }
-  };
-}
 
 // Pointer events pour le texte
 const originalPointerDown = canvas.onpointerdown;
