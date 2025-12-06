@@ -2442,13 +2442,15 @@ function startTextEditing(textElement) {
     textarea.style.position = 'absolute';
     // Ajustement pour le zoom et le pan si implémentés, sinon simple projection
     // On suppose que canvasOffset et zoomLevel sont globaux
-    const screenX = canvasRect.left + (textElement.x * zoomLevel + canvasOffset.x);
-    const screenY = canvasRect.top + (textElement.y * zoomLevel + canvasOffset.y);
+    // Placer le textarea aligné sur le coin supérieur gauche de la boîte du texte
+    const textHeight = textElement.height || (textElement.fontSize || 16);
+    const screenX = canvasRect.left + ((textElement.x || 0) * (zoomLevel || 1) + (canvasOffset?.x || 0));
+    const screenY = canvasRect.top + (((textElement.y || 0) - textHeight) * (zoomLevel || 1) + (canvasOffset?.y || 0));
     
     textarea.style.left = screenX + 'px';
     textarea.style.top = screenY + 'px';
-    textarea.style.width = (textElement.width * zoomLevel) + 'px';
-    textarea.style.height = (textElement.height * zoomLevel) + 'px';
+    textarea.style.width = ((textElement.width || 200) * (zoomLevel || 1)) + 'px';
+    textarea.style.height = ((textElement.height || textHeight) * (zoomLevel || 1)) + 'px';
     textarea.style.fontSize = (textElement.fontSize * zoomLevel) + 'px';
     textarea.style.fontFamily = textElement.fontFamily;
     textarea.style.color = textElement.color;
@@ -3158,9 +3160,12 @@ function updateTextMoveControlsPosition(textElement) {
   
   // Centrer la popup au-dessus du texte
   const textWidth = textElement.width || (textElement.measuredWidth || 100);
+  const textHeight = textElement.height || (textElement.measuredHeight || (textElement.fontSize || textElement.size || 16));
   const textCenterX = (textElement.x || 0) + (textWidth / 2);
   const screenX = rect.left + (textCenterX * (zoomLevel || 1) + (canvasOffset?.x || 0)) - (textMoveOverlay.offsetWidth / 2);
-  const screenY = rect.top + (((textElement.y || 0) * (zoomLevel || 1)) + (canvasOffset?.y || 0)) - 50; // au-dessus avec plus d'espace
+  const topYCanvas = ((textElement.y || 0) - textHeight);
+  const desiredTop = rect.top + (topYCanvas * (zoomLevel || 1)) + (canvasOffset?.y || 0) - (textMoveOverlay.offsetHeight + 8);
+  const screenY = desiredTop;
   
   textMoveOverlay.style.left = `${Math.max(0, screenX)}px`; // éviter les valeurs négatives
   textMoveOverlay.style.top = `${Math.max(0, screenY)}px`;
