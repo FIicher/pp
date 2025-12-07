@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 // GESTION DES UPLOADS DE FORMES IMG
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['formeImgUpload'])) {
     header('Content-Type: application/json');
@@ -2430,16 +2430,19 @@ function startTextEditing(textElement) {
     
     // Styles
     textarea.style.position = 'absolute';
-    // Ajustement pour le zoom et le pan si implémentés, sinon simple projection
-    // On suppose que canvasOffset et zoomLevel sont globaux
-    const screenX = canvasRect.left + (textElement.x * zoomLevel + canvasOffset.x);
-    const screenY = canvasRect.top + (textElement.y * zoomLevel + canvasOffset.y);
+    // Ajustement pour le zoom et le pan - utiliser les variables globales window.*
+    const z = window.zoomLevel || 1;
+    const offX = window.canvasOffset?.x || 0;
+    const offY = window.canvasOffset?.y || 0;
+    // Le texte est dessiné avec textBaseline='top', donc il commence à (x, y) et s'étend vers le bas
+    const screenX = canvasRect.left + (textElement.x * z + offX);
+    const screenY = canvasRect.top + (textElement.y * z + offY);
     
     textarea.style.left = screenX + 'px';
     textarea.style.top = screenY + 'px';
-    textarea.style.width = (textElement.width * zoomLevel) + 'px';
-    textarea.style.height = (textElement.height * zoomLevel) + 'px';
-    textarea.style.fontSize = (textElement.fontSize * zoomLevel) + 'px';
+    textarea.style.width = ((textElement.width || 200) * z) + 'px';
+    textarea.style.height = ((textElement.height || (textElement.fontSize * 1.5)) * z) + 'px';
+    textarea.style.fontSize = ((textElement.fontSize || 16) * z) + 'px';
     textarea.style.fontFamily = textElement.fontFamily;
     textarea.style.color = textElement.color;
     textarea.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
@@ -2463,6 +2466,24 @@ function startTextEditing(textElement) {
         textarea.style.height = 'auto';
         textarea.style.height = textarea.scrollHeight + 'px';
     });
+
+    // Fonction pour mettre à jour la position du textarea en temps réel (suivi du texte comme une ombre)
+    window.updateTextEditAreaPosition = function(te) {
+        const ta = document.getElementById('textEditArea');
+        if (!ta || !te) return;
+        const canvasEl = document.getElementById('drawingCanvas');
+        const r = canvasEl.getBoundingClientRect();
+        const z = window.zoomLevel || 1;
+        const offX = window.canvasOffset?.x || 0;
+        const offY = window.canvasOffset?.y || 0;
+        const sx = r.left + (te.x * z + offX);
+        const sy = r.top + (te.y * z + offY);
+        ta.style.left = sx + 'px';
+        ta.style.top = sy + 'px';
+        ta.style.width = ((te.width || 200) * z) + 'px';
+        ta.style.height = ((te.height || (te.fontSize * 1.5)) * z) + 'px';
+        ta.style.fontSize = ((te.fontSize || 16) * z) + 'px';
+    };
 }
 
 function finishTextEditing() {
@@ -2476,8 +2497,9 @@ function finishTextEditing() {
     
     // Mettre à jour dimensions
     const rect = textarea.getBoundingClientRect();
-    activeTextElement.width = rect.width / zoomLevel;
-    activeTextElement.height = rect.height / zoomLevel;
+    const z = window.zoomLevel || 1;
+    activeTextElement.width = rect.width / z;
+    activeTextElement.height = rect.height / z;
     
     textarea.remove();
     textEditingActive = false;
@@ -3146,13 +3168,19 @@ function updateTextMoveControlsPosition(textElement) {
   const canvasElement = document.getElementById('drawingCanvas');
   const rect = canvasElement.getBoundingClientRect();
   
-  // Centrer la popup au-dessus du texte
+  // Utiliser les variables globales window.* pour cohérence
+  const z = window.zoomLevel || 1;
+  const offX = window.canvasOffset?.x || 0;
+  const offY = window.canvasOffset?.y || 0;
+  
+  // Centrer la popup au-dessus du texte (le texte commence à y et s'étend vers le bas)
   const textWidth = textElement.width || (textElement.measuredWidth || 100);
   const textCenterX = (textElement.x || 0) + (textWidth / 2);
-  const screenX = rect.left + (textCenterX * (zoomLevel || 1) + (canvasOffset?.x || 0)) - (textMoveOverlay.offsetWidth / 2);
-  const screenY = rect.top + (((textElement.y || 0) * (zoomLevel || 1)) + (canvasOffset?.y || 0)) - 50; // au-dessus avec plus d'espace
+  const screenX = rect.left + (textCenterX * z + offX) - (textMoveOverlay.offsetWidth / 2);
+  // Positionner au-dessus du haut du texte (qui est à y)
+  const screenY = rect.top + ((textElement.y || 0) * z + offY) - (textMoveOverlay.offsetHeight + 10);
   
-  textMoveOverlay.style.left = `${Math.max(0, screenX)}px`; // éviter les valeurs négatives
+  textMoveOverlay.style.left = `${Math.max(0, screenX)}px`;
   textMoveOverlay.style.top = `${Math.max(0, screenY)}px`;
 }
 
@@ -3254,11 +3282,15 @@ document.getElementById('drawingCanvas').addEventListener('mousedown', (e) => {
 document.addEventListener('mousemove', (e) => {
   if (!draggingText) return;
   const rect = canvas.getBoundingClientRect();
-  const cx = (e.clientX - rect.left - (canvasOffset?.x || 0)) / (zoomLevel || 1);
-  const cy = (e.clientY - rect.top - (canvasOffset?.y || 0)) / (zoomLevel || 1);
+  const z = window.zoomLevel || 1;
+  const offX = window.canvasOffset?.x || 0;
+  const offY = window.canvasOffset?.y || 0;
+  const cx = (e.clientX - rect.left - offX) / z;
+  const cy = (e.clientY - rect.top - offY) / z;
   draggingText.x = Math.round(cx - window.dragOffset.x);
   draggingText.y = Math.round(cy - window.dragOffset.y);
   updateTextMoveControlsPosition(draggingText);
+  // Mettre à jour le textarea si en édition (suit le texte comme une ombre)
   if (textEditingActive && window.activeTextElement === draggingText && typeof window.updateTextEditAreaPosition === 'function') {
     window.updateTextEditAreaPosition(draggingText);
   }
