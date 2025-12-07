@@ -3593,7 +3593,7 @@ canvas.onpointermove = function(e){
   if (isDragging && activeTextElement) {
     activeTextElement.x = pos.x - dragOffset.x;
     activeTextElement.y = pos.y - dragOffset.y;
-    // Mettre à jour la popup de contrôle en temps réel
+    // Mettre à jour la popup en temps réel pendant le déplacement
     if (typeof updateTextMoveControlsPosition === 'function') {
       updateTextMoveControlsPosition(activeTextElement);
     }
@@ -4861,17 +4861,6 @@ document.addEventListener('keydown', (e) => {
     
     // Fonction pour détecter quel élément est cliqué
     function getClickedElement(x, y) {
-      // Vérifier les éléments texte en premier (souvent au-dessus)
-      if (typeof textElements !== 'undefined' && textElements.length > 0) {
-        for (let i = textElements.length - 1; i >= 0; i--) {
-          const t = textElements[i];
-          if (x >= t.x && x <= t.x + (t.width || 100) && 
-              y >= t.y && y <= t.y + (t.height || 30)) {
-            return { type: 'text', index: i, element: t };
-          }
-        }
-      }
-      
       // Vérifier les formes (en ordre inverse pour prendre celle du dessus)
       for (let i = shapes.length - 1; i >= 0; i--) {
         const shape = shapes[i];
@@ -4894,6 +4883,15 @@ document.addEventListener('keydown', (e) => {
         const stroke = drawingStrokes[i];
         if (isPointInDrawingStroke(x, y, stroke)) {
           return { type: 'drawing', index: i, element: stroke };
+        }
+      }
+      
+      // **NOUVEAU: Vérifier les textes**
+      for (let i = textElements.length - 1; i >= 0; i--) {
+        const txt = textElements[i];
+        if (x >= txt.x && x <= txt.x + (txt.width || 100) && 
+            y >= txt.y && y <= txt.y + (txt.height || txt.fontSize || 24)) {
+          return { type: 'text', index: i, element: txt };
         }
       }
       
@@ -9991,8 +9989,9 @@ document.addEventListener('keydown', (e) => {
         if (clickedElement.type === 'text') {
           const textEl = clickedElement.element;
           selectTextElement(textEl);
-          // Préparer le drag immédiatement
+          // Permettre le déplacement immédiat si on reste cliqué
           isDragging = true;
+          activeTextElement = textEl;
           dragOffset = { x: pos.x - textEl.x, y: pos.y - textEl.y };
           e.preventDefault();
           return;
