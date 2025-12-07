@@ -3593,6 +3593,10 @@ canvas.onpointermove = function(e){
   if (isDragging && activeTextElement) {
     activeTextElement.x = pos.x - dragOffset.x;
     activeTextElement.y = pos.y - dragOffset.y;
+    // Mettre à jour la popup de contrôle en temps réel
+    if (typeof updateTextMoveControlsPosition === 'function') {
+      updateTextMoveControlsPosition(activeTextElement);
+    }
     redrawAll();
     e.preventDefault();
     return;
@@ -4857,6 +4861,17 @@ document.addEventListener('keydown', (e) => {
     
     // Fonction pour détecter quel élément est cliqué
     function getClickedElement(x, y) {
+      // Vérifier les éléments texte en premier (souvent au-dessus)
+      if (typeof textElements !== 'undefined' && textElements.length > 0) {
+        for (let i = textElements.length - 1; i >= 0; i--) {
+          const t = textElements[i];
+          if (x >= t.x && x <= t.x + (t.width || 100) && 
+              y >= t.y && y <= t.y + (t.height || 30)) {
+            return { type: 'text', index: i, element: t };
+          }
+        }
+      }
+      
       // Vérifier les formes (en ordre inverse pour prendre celle du dessus)
       for (let i = shapes.length - 1; i >= 0; i--) {
         const shape = shapes[i];
@@ -9972,6 +9987,16 @@ document.addEventListener('keydown', (e) => {
       // Vérifier si on clique sur un nouvel élément à sélectionner
       const clickedElement = getClickedElement(pos.x, pos.y);
       if (clickedElement && (currentTool === 'select' || e.ctrlKey)) {
+        // Gestion spéciale pour le texte en mode select
+        if (clickedElement.type === 'text') {
+          const textEl = clickedElement.element;
+          selectTextElement(textEl);
+          // Préparer le drag immédiatement
+          isDragging = true;
+          dragOffset = { x: pos.x - textEl.x, y: pos.y - textEl.y };
+          e.preventDefault();
+          return;
+        }
         selectElement(clickedElement);
         e.preventDefault();
         return;
