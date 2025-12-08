@@ -10892,11 +10892,36 @@ document.addEventListener('keydown', (e) => {
                     shineOpacity = tempShineOpacity;
 
                 } else {
-                    // Rendu basique
+                    // Rendu basique avec support texture
                     exportCtx.lineCap = 'round';
                     exportCtx.lineJoin = 'round';
                     exportCtx.lineWidth = stroke.size || 5;
-                    exportCtx.strokeStyle = stroke.color || '#000000';
+                    
+                    // TEXTURE FOR STROKES IN EXPORT
+                    let strokeStyle = stroke.color || '#000000';
+                    if (stroke.texture && stroke.texture.enabled && window.getTexturePattern) {
+                        const pattern = window.getTexturePattern(exportCtx, stroke.texture);
+                        if (pattern) {
+                            const matrix = new DOMMatrix();
+                            if (stroke.texture.scale) {
+                                const sc = stroke.texture.scale / 100;
+                                matrix.scaleSelf(sc, sc);
+                            }
+                            if (stroke.texture.angle) {
+                                matrix.rotateSelf(stroke.texture.angle);
+                            }
+                            pattern.setTransform(matrix);
+                            strokeStyle = pattern;
+                            
+                            if (stroke.texture.blendMode) {
+                                exportCtx.globalCompositeOperation = stroke.texture.blendMode;
+                            }
+                            if (stroke.texture.opacity !== undefined) {
+                                exportCtx.globalAlpha = stroke.texture.opacity / 100;
+                            }
+                        }
+                    }
+                    exportCtx.strokeStyle = strokeStyle;
                     exportCtx.globalAlpha = 1.0;
                     
                     exportCtx.beginPath();
@@ -10905,6 +10930,9 @@ document.addEventListener('keydown', (e) => {
                     exportCtx.lineTo(stroke.points[i].x, stroke.points[i].y);
                     }
                     exportCtx.stroke();
+                    
+                    // Reset composite operation
+                    exportCtx.globalCompositeOperation = 'source-over';
                 }
                 
                 exportCtx.restore();
@@ -14958,10 +14986,11 @@ function performSandboxedDownload(canvas, filename) {
         
         const cache = textureCache[url];
         if (cache.img.complete && cache.img.naturalWidth > 0) {
-            if (!cache.pattern) {
-                cache.pattern = ctx.createPattern(cache.img, 'repeat');
-            }
-            return cache.pattern;
+            // IMPORTANT: Créer un nouveau pattern pour chaque contexte différent
+            // Les patterns Canvas sont liés au contexte qui les crée
+            // Donc pour l'export on doit recréer le pattern avec exportCtx
+            const pattern = ctx.createPattern(cache.img, 'repeat');
+            return pattern;
         }
         return null;
     };
