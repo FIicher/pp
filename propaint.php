@@ -5290,13 +5290,20 @@ document.addEventListener('keydown', (e) => {
         };
       } else if (selectedElementType === 'image') {
         bounds = {
-          x: selectedElement.x,
-          y: selectedElement.y,
+          x: selectedElement.x || 0,
+          y: selectedElement.y || 0,
           w: selectedElement.width,
           h: selectedElement.height
         };
       } else if (selectedElementType === 'drawing') {
         bounds = getDrawingBounds(selectedElement);
+      } else if (selectedElementType === 'text') {
+        bounds = {
+          x: selectedElement.x,
+          y: selectedElement.y,
+          w: selectedElement.width || 100,
+          h: selectedElement.height || selectedElement.fontSize || 24
+        };
       }
       
       if (!bounds) return null;
@@ -5627,6 +5634,8 @@ document.addEventListener('keydown', (e) => {
       if (selectedElementType === 'shape') {
         selectedElement.rotation = angle;
       } else if (selectedElementType === 'image') {
+        selectedElement.rotation = angle;
+      } else if (selectedElementType === 'text') {
         selectedElement.rotation = angle;
       } else if (selectedElementType === 'drawing') {
          const prevAngle = selectedElement.rotation || 0;
@@ -10389,6 +10398,102 @@ document.addEventListener('keydown', (e) => {
                p.y = newY + (p.y - currentBounds.y) * scaleY;
              }
           }
+        } else if (selectedElementType === 'image') {
+          // Redimensionnement des images
+          const img = selectedElement;
+          const originalX = img.x || 0;
+          const originalY = img.y || 0;
+          const originalW = img.width;
+          const originalH = img.height;
+          
+          switch(elementResizeHandle) {
+            case 'nw':
+              img.width = originalW - deltaX;
+              img.height = originalH - deltaY;
+              img.x = originalX + deltaX;
+              img.y = originalY + deltaY;
+              break;
+            case 'ne':
+              img.width = originalW + deltaX;
+              img.height = originalH - deltaY;
+              img.y = originalY + deltaY;
+              break;
+            case 'sw':
+              img.width = originalW - deltaX;
+              img.height = originalH + deltaY;
+              img.x = originalX + deltaX;
+              break;
+            case 'se':
+              img.width = originalW + deltaX;
+              img.height = originalH + deltaY;
+              break;
+            case 'n':
+              img.height = originalH - deltaY;
+              img.y = originalY + deltaY;
+              break;
+            case 's':
+              img.height = originalH + deltaY;
+              break;
+            case 'w':
+              img.width = originalW - deltaX;
+              img.x = originalX + deltaX;
+              break;
+            case 'e':
+              img.width = originalW + deltaX;
+              break;
+          }
+          
+          // Dimensions minimales
+          if (img.width < 10) img.width = 10;
+          if (img.height < 10) img.height = 10;
+        } else if (selectedElementType === 'text') {
+          // Redimensionnement des textes
+          const txt = selectedElement;
+          const originalW = txt.width || 100;
+          const originalH = txt.height || txt.fontSize || 24;
+          
+          switch(elementResizeHandle) {
+            case 'nw':
+              txt.width = originalW - deltaX;
+              txt.height = originalH - deltaY;
+              txt.x += deltaX;
+              txt.y += deltaY;
+              break;
+            case 'ne':
+              txt.width = originalW + deltaX;
+              txt.height = originalH - deltaY;
+              txt.y += deltaY;
+              break;
+            case 'sw':
+              txt.width = originalW - deltaX;
+              txt.height = originalH + deltaY;
+              txt.x += deltaX;
+              break;
+            case 'se':
+              txt.width = originalW + deltaX;
+              txt.height = originalH + deltaY;
+              break;
+            case 'n':
+              txt.height = originalH - deltaY;
+              txt.y += deltaY;
+              break;
+            case 's':
+              txt.height = originalH + deltaY;
+              break;
+            case 'w':
+              txt.width = originalW - deltaX;
+              txt.x += deltaX;
+              break;
+            case 'e':
+              txt.width = originalW + deltaX;
+              break;
+          }
+          
+          // Dimensions minimales
+          if (txt.width < 20) txt.width = 20;
+          if (txt.height < 10) txt.height = 10;
+          // Ajuster la taille de police proportionnellement
+          txt.fontSize = Math.max(8, Math.round(txt.height * 0.8));
         }
         
         window.resizeStartX = pos.x;
