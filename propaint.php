@@ -2582,6 +2582,10 @@ document.getElementById('fontUpload').addEventListener('change', async function(
              if (s.texture.blendMode) {
                  ctx.globalCompositeOperation = s.texture.blendMode;
              }
+             // Apply texture opacity to ALL styles
+             if (s.texture.opacity !== undefined) {
+                 ctx.globalAlpha = (s.texture.opacity / 100) * baseOpacity;
+             }
           }
       }
 
@@ -2944,16 +2948,8 @@ document.getElementById('fontUpload').addEventListener('change', async function(
 
         case 'flat-fill':
         default:
-          if (activeFillStyle !== finalColor && s.texture && s.texture.opacity !== undefined) {
-              ctx.save();
-              ctx.globalAlpha = (s.texture.opacity / 100) * baseOpacity;
-              ctx.fillStyle = activeFillStyle;
-              ctx.fill();
-              ctx.restore();
-          } else {
-              ctx.fillStyle = activeFillStyle;
-              ctx.fill();
-          }
+          ctx.fillStyle = activeFillStyle;
+          ctx.fill();
           break;
       }
     }
@@ -11203,7 +11199,10 @@ document.addEventListener('keydown', (e) => {
                         }
                     }
                     exportCtx.strokeStyle = strokeStyle;
-                    exportCtx.globalAlpha = 1.0;
+                    // Don't override globalAlpha if texture opacity was set
+                    if (!stroke.texture || stroke.texture.opacity === undefined) {
+                        exportCtx.globalAlpha = 1.0;
+                    }
                     
                     exportCtx.beginPath();
                     exportCtx.moveTo(stroke.points[0].x, stroke.points[0].y);
