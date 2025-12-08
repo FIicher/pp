@@ -2165,7 +2165,24 @@ function drawTextElement(ctx, textElement, opts = {}) {
         ctx.translate(-centerX, -centerY);
     }
 
-    // NEW: Apply Advanced Effects Transform (3D Rotation)
+    // NEW: Apply 3D Transform from transform3D property
+    if (textElement.transform3D && window.apply3DTransform) {
+        const centerX = textElement.x + textElement.width / 2;
+        const centerY = textElement.y + textElement.height / 2;
+        ctx.translate(centerX, centerY);
+        window.apply3DTransform(ctx, textElement.transform3D);
+        ctx.translate(-centerX, -centerY);
+        
+        // Apply 3D shadow if enabled
+        if (textElement.transform3D.shadow) {
+            ctx.shadowColor = 'rgba(0,0,0,0.3)';
+            ctx.shadowBlur = 15;
+            ctx.shadowOffsetX = 8;
+            ctx.shadowOffsetY = 8;
+        }
+    }
+
+    // Apply Advanced Effects Transform (3D Rotation) - legacy
     if (textElement.advancedEffect && window.applyAdvancedEffectTransform) {
         const centerX = textElement.x + textElement.width / 2;
         const centerY = textElement.y + textElement.height / 2;
@@ -2279,6 +2296,36 @@ function drawTextElement(ctx, textElement, opts = {}) {
             }
             
             drawTextContent(depthColor);
+            ctx.restore();
+        }
+    }
+    
+    // NEW: 3D Extrusion from transform3D
+    if (textElement.transform3D && textElement.transform3D.extrusion > 0) {
+        const t3d = textElement.transform3D;
+        const depth = t3d.extrusion;
+        const layers = t3d.layers || 1;
+        const extColor = t3d.extrusionColor || '#333333';
+        
+        // Direction based on rotation
+        const rotX = t3d.rotateX || 0;
+        const rotY = t3d.rotateY || 0;
+        const dirX = rotY > 0 ? 1 : rotY < 0 ? -1 : 0;
+        const dirY = rotX > 0 ? -1 : rotX < 0 ? 1 : 0;
+        const defaultDir = (dirX === 0 && dirY === 0) ? 1 : 0;
+        
+        // Draw shadow layers (back to front)
+        for (let i = layers; i >= 1; i--) {
+            const offset = (depth / layers) * i;
+            const alpha = 0.6 - (i / layers) * 0.4;
+            
+            ctx.save();
+            ctx.translate(
+                offset * (dirX || defaultDir),
+                offset * (dirY || defaultDir)
+            );
+            ctx.globalAlpha = alpha;
+            drawTextContent(extColor);
             ctx.restore();
         }
     }
@@ -4233,10 +4280,27 @@ document.addEventListener('keydown', (e) => {
       
       ctx.save(); // Sauvegarder l'état du contexte
 
-      // NEW: Apply Advanced Effects Transform (3D Rotation)
+      // Center point for transforms
+      const centerX = s.x + s.w / 2;
+      const centerY = s.y + s.h / 2;
+
+      // NEW: Apply 3D Transform from transform3D property
+      if (s.transform3D && window.apply3DTransform) {
+          ctx.translate(centerX, centerY);
+          window.apply3DTransform(ctx, s.transform3D);
+          ctx.translate(-centerX, -centerY);
+          
+          // Apply 3D shadow if enabled
+          if (s.transform3D.shadow) {
+              ctx.shadowColor = 'rgba(0,0,0,0.3)';
+              ctx.shadowBlur = 15;
+              ctx.shadowOffsetX = 8;
+              ctx.shadowOffsetY = 8;
+          }
+      }
+
+      // Apply Advanced Effects Transform (3D Rotation) - legacy
       if (s.advancedEffect && window.applyAdvancedEffectTransform) {
-          const centerX = s.x + s.w / 2;
-          const centerY = s.y + s.h / 2;
           ctx.translate(centerX, centerY);
           window.applyAdvancedEffectTransform(ctx, s.advancedEffect, s.w, s.h);
           ctx.translate(-centerX, -centerY);
@@ -4843,6 +4907,43 @@ document.addEventListener('keydown', (e) => {
       }
       };
       
+      // NEW: 3D Extrusion from transform3D for shapes
+      if (s.transform3D && s.transform3D.extrusion > 0) {
+          const t3d = s.transform3D;
+          const depth = t3d.extrusion;
+          const layers = t3d.layers || 1;
+          const extColor = t3d.extrusionColor || '#333333';
+          
+          // Direction based on rotation
+          const rotX = t3d.rotateX || 0;
+          const rotY = t3d.rotateY || 0;
+          const dirX = rotY > 0 ? 1 : rotY < 0 ? -1 : 0;
+          const dirY = rotX > 0 ? -1 : rotX < 0 ? 1 : 0;
+          const defaultDir = (dirX === 0 && dirY === 0) ? 1 : 0;
+          
+          // Draw shadow layers (back to front)
+          const originalFillColor = s.fillColor;
+          const originalColor = s.color;
+          for (let i = layers; i >= 1; i--) {
+              const offset = (depth / layers) * i;
+              const alpha = 0.5 - (i / layers) * 0.35;
+              
+              ctx.save();
+              ctx.translate(
+                  offset * (dirX || defaultDir),
+                  offset * (dirY || defaultDir)
+              );
+              ctx.globalAlpha = alpha;
+              s.fillColor = extColor;
+              s.color = extColor;
+              drawContent();
+              ctx.restore();
+          }
+          s.fillColor = originalFillColor;
+          s.color = originalColor;
+          ctx.globalAlpha = Math.max(0, Math.min(1, finalOpacity));
+      }
+      
       drawContent();
       
       // NEW: Apply Advanced Effects Post (Bevel, Reflection)
@@ -5428,13 +5529,115 @@ document.addEventListener('keydown', (e) => {
           ⚙️
         </button>
         <div class="relative inline-block">
-          <button onclick="toggleRotationPopup()" class="p-1 hover:bg-gray-700 rounded" title="Rotation">
+          <button onclick="toggleRotationPopup()" class="p-1 hover:bg-gray-700 rounded" title="Rotation & 3D">
             🔄
           </button>
-          <div id="rotationPopup" class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden bg-gray-800 p-2 rounded shadow-lg border border-gray-600 w-48 z-50">
-            <div class="text-xs text-center mb-1">Rotation: <span id="rotationValueDisplay">0</span>°</div>
-            <input type="range" min="0" max="360" value="0" class="w-full mb-2" oninput="updateElementRotation(this.value)">
-            <div class="flex justify-between gap-2">
+          <div id="rotationPopup" class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden bg-gray-800 p-3 rounded-lg shadow-lg border border-gray-600 z-50" style="width: 320px;">
+            <!-- Tabs -->
+            <div class="flex mb-3 border-b border-gray-600">
+              <button id="tabRotation" onclick="switchRotationTab('rotation')" class="flex-1 py-1 text-xs font-medium text-center border-b-2 border-blue-500 text-blue-400">Rotation</button>
+              <button id="tab3D" onclick="switchRotationTab('3d')" class="flex-1 py-1 text-xs font-medium text-center text-gray-400 hover:text-white">3D</button>
+            </div>
+            
+            <!-- Rotation Tab Content -->
+            <div id="rotationTabContent">
+              <div class="text-xs text-center mb-1">Rotation: <span id="rotationValueDisplay">0</span>°</div>
+              <input type="range" min="0" max="360" value="0" class="w-full mb-2" oninput="updateElementRotation(this.value)">
+            </div>
+            
+            <!-- 3D Tab Content -->
+            <div id="tab3DContent" class="hidden text-xs space-y-2">
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <label class="block text-gray-400 mb-1">Perspective</label>
+                  <input type="range" id="el3dPerspective" min="100" max="2000" value="800" class="w-full" oninput="update3DElement()">
+                </div>
+                <div>
+                  <label class="block text-gray-400 mb-1">Origine</label>
+                  <select id="el3dOrigin" class="w-full bg-gray-700 rounded px-1 py-0.5 text-white" onchange="update3DElement()">
+                    <option value="center">Centre</option>
+                    <option value="left">Gauche</option>
+                    <option value="right">Droite</option>
+                    <option value="top">Haut</option>
+                    <option value="bottom">Bas</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div class="grid grid-cols-3 gap-2">
+                <div>
+                  <label class="block text-gray-400 mb-1">Rotate X</label>
+                  <input type="range" id="el3dRotateX" min="-80" max="80" value="0" class="w-full" oninput="update3DElement()">
+                  <div class="text-center text-gray-500" id="el3dRotateXVal">0°</div>
+                </div>
+                <div>
+                  <label class="block text-gray-400 mb-1">Rotate Y</label>
+                  <input type="range" id="el3dRotateY" min="-80" max="80" value="0" class="w-full" oninput="update3DElement()">
+                  <div class="text-center text-gray-500" id="el3dRotateYVal">0°</div>
+                </div>
+                <div>
+                  <label class="block text-gray-400 mb-1">Rotate Z</label>
+                  <input type="range" id="el3dRotateZ" min="-45" max="45" value="0" class="w-full" oninput="update3DElement()">
+                  <div class="text-center text-gray-500" id="el3dRotateZVal">0°</div>
+                </div>
+              </div>
+              
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <label class="block text-gray-400 mb-1">Skew X</label>
+                  <input type="range" id="el3dSkewX" min="-60" max="60" value="0" class="w-full" oninput="update3DElement()">
+                  <div class="text-center text-gray-500" id="el3dSkewXVal">0°</div>
+                </div>
+                <div>
+                  <label class="block text-gray-400 mb-1">Skew Y</label>
+                  <input type="range" id="el3dSkewY" min="-40" max="40" value="0" class="w-full" oninput="update3DElement()">
+                  <div class="text-center text-gray-500" id="el3dSkewYVal">0°</div>
+                </div>
+              </div>
+              
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <label class="block text-gray-400 mb-1">Extrusion (Profondeur)</label>
+                  <input type="range" id="el3dExtrusion" min="0" max="40" value="0" class="w-full" oninput="update3DElement()">
+                  <div class="text-center text-gray-500" id="el3dExtrusionVal">0</div>
+                </div>
+                <div>
+                  <label class="block text-gray-400 mb-1">Layers 3D</label>
+                  <input type="range" id="el3dLayers" min="1" max="30" value="1" class="w-full" oninput="update3DElement()">
+                  <div class="text-center text-gray-500" id="el3dLayersVal">1</div>
+                </div>
+              </div>
+              
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <label class="block text-gray-400 mb-1">Couleur Extrusion</label>
+                  <input type="color" id="el3dExtrusionColor" value="#333333" class="w-full h-6 rounded cursor-pointer" onchange="update3DElement()">
+                </div>
+                <div class="flex items-center gap-2 pt-4">
+                  <input type="checkbox" id="el3dShadow" class="rounded" onchange="update3DElement()">
+                  <label class="text-gray-400">Ombre portée</label>
+                </div>
+              </div>
+              
+              <div>
+                <label class="block text-gray-400 mb-1">Preset 3D</label>
+                <select id="el3dPreset" class="w-full bg-gray-700 rounded px-2 py-1 text-white" onchange="apply3DPreset()">
+                  <option value="none">-- Aucun --</option>
+                  <option value="tilt-left">Incliné Gauche</option>
+                  <option value="tilt-right">Incliné Droite</option>
+                  <option value="perspective-top">Perspective Haut</option>
+                  <option value="perspective-bottom">Perspective Bas</option>
+                  <option value="isometric">Isométrique</option>
+                  <option value="flip-card">Flip Card</option>
+                  <option value="book">Livre Ouvert</option>
+                  <option value="shadow-depth">Profondeur Ombre</option>
+                </select>
+              </div>
+            </div>
+            
+            <!-- Action Buttons -->
+            <div class="flex justify-between gap-2 mt-3 pt-2 border-t border-gray-600">
+                <button onclick="reset3DElement()" class="flex-1 text-yellow-500 hover:text-yellow-400 text-xs px-2 py-1 border border-yellow-500 rounded bg-transparent">↺ Reset</button>
                 <button onclick="cancelRotation()" class="flex-1 text-red-500 hover:text-red-400 text-xs px-2 py-1 border border-red-500 rounded bg-transparent">✕ Annuler</button>
                 <button onclick="validateRotation()" class="flex-1 text-green-500 hover:text-green-400 text-xs px-2 py-1 border border-green-500 rounded bg-transparent">✓ Valider</button>
             </div>
@@ -5617,7 +5820,149 @@ document.addEventListener('keydown', (e) => {
             // Reset slider value if popup is reopened
             const slider = document.querySelector('#rotationPopup input[type=range]');
             if (slider) slider.value = initialRotation;
+            // Also reset 3D values
+            reset3DElement();
         }
+    };
+
+    // Tab switching for rotation popup
+    window.switchRotationTab = function(tab) {
+        const tabRotation = document.getElementById('tabRotation');
+        const tab3D = document.getElementById('tab3D');
+        const rotationContent = document.getElementById('rotationTabContent');
+        const content3D = document.getElementById('tab3DContent');
+        
+        if (tab === 'rotation') {
+            tabRotation.classList.add('border-blue-500', 'text-blue-400');
+            tabRotation.classList.remove('text-gray-400');
+            tab3D.classList.remove('border-blue-500', 'text-blue-400');
+            tab3D.classList.add('text-gray-400', 'border-transparent');
+            rotationContent.classList.remove('hidden');
+            content3D.classList.add('hidden');
+        } else {
+            tab3D.classList.add('border-blue-500', 'text-blue-400');
+            tab3D.classList.remove('text-gray-400');
+            tabRotation.classList.remove('border-blue-500', 'text-blue-400');
+            tabRotation.classList.add('text-gray-400', 'border-transparent');
+            content3D.classList.remove('hidden');
+            rotationContent.classList.add('hidden');
+            // Load current 3D values
+            load3DValues();
+        }
+    };
+
+    // Store initial 3D state for cancel
+    let initial3DState = null;
+
+    function load3DValues() {
+        if (!selectedElement) return;
+        const t = selectedElement.transform3D || {};
+        
+        document.getElementById('el3dPerspective').value = t.perspective || 800;
+        document.getElementById('el3dOrigin').value = t.origin || 'center';
+        document.getElementById('el3dRotateX').value = t.rotateX || 0;
+        document.getElementById('el3dRotateY').value = t.rotateY || 0;
+        document.getElementById('el3dRotateZ').value = t.rotateZ || 0;
+        document.getElementById('el3dSkewX').value = t.skewX || 0;
+        document.getElementById('el3dSkewY').value = t.skewY || 0;
+        document.getElementById('el3dExtrusion').value = t.extrusion || 0;
+        document.getElementById('el3dLayers').value = t.layers || 1;
+        document.getElementById('el3dExtrusionColor').value = t.extrusionColor || '#333333';
+        document.getElementById('el3dShadow').checked = t.shadow || false;
+        document.getElementById('el3dPreset').value = 'none';
+        
+        // Update display values
+        updateSliderDisplays();
+        
+        // Store initial state
+        initial3DState = JSON.parse(JSON.stringify(t));
+    }
+
+    function updateSliderDisplays() {
+        document.getElementById('el3dRotateXVal').textContent = document.getElementById('el3dRotateX').value + '°';
+        document.getElementById('el3dRotateYVal').textContent = document.getElementById('el3dRotateY').value + '°';
+        document.getElementById('el3dRotateZVal').textContent = document.getElementById('el3dRotateZ').value + '°';
+        document.getElementById('el3dSkewXVal').textContent = document.getElementById('el3dSkewX').value + '°';
+        document.getElementById('el3dSkewYVal').textContent = document.getElementById('el3dSkewY').value + '°';
+        document.getElementById('el3dExtrusionVal').textContent = document.getElementById('el3dExtrusion').value;
+        document.getElementById('el3dLayersVal').textContent = document.getElementById('el3dLayers').value;
+    }
+
+    window.update3DElement = function() {
+        if (!selectedElement) return;
+        
+        selectedElement.transform3D = {
+            perspective: parseInt(document.getElementById('el3dPerspective').value),
+            origin: document.getElementById('el3dOrigin').value,
+            rotateX: parseInt(document.getElementById('el3dRotateX').value),
+            rotateY: parseInt(document.getElementById('el3dRotateY').value),
+            rotateZ: parseInt(document.getElementById('el3dRotateZ').value),
+            skewX: parseInt(document.getElementById('el3dSkewX').value),
+            skewY: parseInt(document.getElementById('el3dSkewY').value),
+            extrusion: parseInt(document.getElementById('el3dExtrusion').value),
+            layers: parseInt(document.getElementById('el3dLayers').value),
+            extrusionColor: document.getElementById('el3dExtrusionColor').value,
+            shadow: document.getElementById('el3dShadow').checked
+        };
+        
+        updateSliderDisplays();
+        redrawAll();
+        drawSelectionHandles();
+    };
+
+    window.reset3DElement = function() {
+        if (!selectedElement) return;
+        
+        selectedElement.transform3D = {};
+        
+        // Reset UI
+        document.getElementById('el3dPerspective').value = 800;
+        document.getElementById('el3dOrigin').value = 'center';
+        document.getElementById('el3dRotateX').value = 0;
+        document.getElementById('el3dRotateY').value = 0;
+        document.getElementById('el3dRotateZ').value = 0;
+        document.getElementById('el3dSkewX').value = 0;
+        document.getElementById('el3dSkewY').value = 0;
+        document.getElementById('el3dExtrusion').value = 0;
+        document.getElementById('el3dLayers').value = 1;
+        document.getElementById('el3dExtrusionColor').value = '#333333';
+        document.getElementById('el3dShadow').checked = false;
+        document.getElementById('el3dPreset').value = 'none';
+        
+        updateSliderDisplays();
+        redrawAll();
+        drawSelectionHandles();
+    };
+
+    window.apply3DPreset = function() {
+        const preset = document.getElementById('el3dPreset').value;
+        if (preset === 'none') return;
+        
+        const presets = {
+            'tilt-left': { rotateX: 0, rotateY: -25, rotateZ: 0, skewX: 0, skewY: 0, perspective: 800, extrusion: 0, layers: 1 },
+            'tilt-right': { rotateX: 0, rotateY: 25, rotateZ: 0, skewX: 0, skewY: 0, perspective: 800, extrusion: 0, layers: 1 },
+            'perspective-top': { rotateX: 30, rotateY: 0, rotateZ: 0, skewX: 0, skewY: 0, perspective: 600, extrusion: 0, layers: 1 },
+            'perspective-bottom': { rotateX: -30, rotateY: 0, rotateZ: 0, skewX: 0, skewY: 0, perspective: 600, extrusion: 0, layers: 1 },
+            'isometric': { rotateX: 45, rotateY: -35, rotateZ: 0, skewX: 0, skewY: 0, perspective: 1000, extrusion: 15, layers: 10 },
+            'flip-card': { rotateX: 0, rotateY: 45, rotateZ: 0, skewX: 0, skewY: 0, perspective: 500, extrusion: 0, layers: 1 },
+            'book': { rotateX: 10, rotateY: -30, rotateZ: -5, skewX: 0, skewY: 0, perspective: 700, extrusion: 5, layers: 5 },
+            'shadow-depth': { rotateX: 0, rotateY: 0, rotateZ: 0, skewX: 20, skewY: -10, perspective: 800, extrusion: 20, layers: 15, shadow: true }
+        };
+        
+        const p = presets[preset];
+        if (!p) return;
+        
+        document.getElementById('el3dPerspective').value = p.perspective;
+        document.getElementById('el3dRotateX').value = p.rotateX;
+        document.getElementById('el3dRotateY').value = p.rotateY;
+        document.getElementById('el3dRotateZ').value = p.rotateZ;
+        document.getElementById('el3dSkewX').value = p.skewX;
+        document.getElementById('el3dSkewY').value = p.skewY;
+        document.getElementById('el3dExtrusion').value = p.extrusion;
+        document.getElementById('el3dLayers').value = p.layers;
+        if (p.shadow) document.getElementById('el3dShadow').checked = true;
+        
+        update3DElement();
     };
 
     // Function to update rotation from slider
@@ -8775,7 +9120,24 @@ document.addEventListener('keydown', (e) => {
             ctx.translate(-centerX, -centerY);
           }
           
-          // NEW: Apply Advanced Effects Transform
+          // NEW: Apply 3D Transform from transform3D property
+          if (imgObj.transform3D && window.apply3DTransform) {
+              const centerX = (imgObj.x || 0) + imgObj.width / 2;
+              const centerY = (imgObj.y || 0) + imgObj.height / 2;
+              ctx.translate(centerX, centerY);
+              window.apply3DTransform(ctx, imgObj.transform3D);
+              ctx.translate(-centerX, -centerY);
+              
+              // Apply 3D shadow if enabled
+              if (imgObj.transform3D.shadow) {
+                  ctx.shadowColor = 'rgba(0,0,0,0.3)';
+                  ctx.shadowBlur = 15;
+                  ctx.shadowOffsetX = 8;
+                  ctx.shadowOffsetY = 8;
+              }
+          }
+
+          // Apply Advanced Effects Transform - legacy
           if (imgObj.advancedEffect && window.applyAdvancedEffectTransform) {
               const centerX = (imgObj.x || 0) + imgObj.width / 2;
               const centerY = (imgObj.y || 0) + imgObj.height / 2;
@@ -8800,6 +9162,45 @@ document.addEventListener('keydown', (e) => {
             default:
               ctx.filter = 'none';
           }
+          
+          // NEW: 3D Extrusion for images
+          if (imgObj.transform3D && imgObj.transform3D.extrusion > 0) {
+              const t3d = imgObj.transform3D;
+              const depth = t3d.extrusion;
+              const layers = t3d.layers || 1;
+              
+              // Direction based on rotation
+              const rotX = t3d.rotateX || 0;
+              const rotY = t3d.rotateY || 0;
+              const dirX = rotY > 0 ? 1 : rotY < 0 ? -1 : 0;
+              const dirY = rotX > 0 ? -1 : rotX < 0 ? 1 : 0;
+              const defaultDir = (dirX === 0 && dirY === 0) ? 1 : 0;
+              
+              // Draw shadow layers (back to front)
+              for (let i = layers; i >= 1; i--) {
+                  const offset = (depth / layers) * i;
+                  const alpha = 0.3 - (i / layers) * 0.2;
+                  
+                  ctx.save();
+                  ctx.translate(
+                      offset * (dirX || defaultDir),
+                      offset * (dirY || defaultDir)
+                  );
+                  ctx.globalAlpha = alpha;
+                  ctx.filter = 'brightness(0.3)'; // Dark shadow
+                  ctx.drawImage(imgObj.img, imgObj.x || 0, imgObj.y || 0, imgObj.width, imgObj.height);
+                  ctx.restore();
+              }
+              // Reset filter for main image
+              ctx.filter = 'none';
+              switch (imageStyle) {
+                case 'grayscale': ctx.filter = 'grayscale(1)'; break;
+                case 'sepia': ctx.filter = 'sepia(1)'; break;
+                case 'contrast': ctx.filter = 'contrast(1.4)'; break;
+                case 'saturate': ctx.filter = 'saturate(1.6)'; break;
+              }
+          }
+          
           ctx.drawImage(imgObj.img, imgObj.x || 0, imgObj.y || 0, imgObj.width, imgObj.height);
           
           // NEW: Apply Advanced Effects Post
@@ -11047,6 +11448,22 @@ document.addEventListener('keydown', (e) => {
                 exportCtx.translate(centerX, centerY);
                 exportCtx.rotate((layer.ref.rotation * Math.PI) / 180);
                 exportCtx.translate(-centerX, -centerY);
+              }
+              
+              // NEW: Apply 3D Transform for export
+              if (layer.ref.transform3D && window.apply3DTransform) {
+                const centerX = (layer.ref.x || 0) + layer.ref.width / 2;
+                const centerY = (layer.ref.y || 0) + layer.ref.height / 2;
+                exportCtx.translate(centerX, centerY);
+                window.apply3DTransform(exportCtx, layer.ref.transform3D);
+                exportCtx.translate(-centerX, -centerY);
+                
+                if (layer.ref.transform3D.shadow) {
+                  exportCtx.shadowColor = 'rgba(0,0,0,0.3)';
+                  exportCtx.shadowBlur = 15;
+                  exportCtx.shadowOffsetX = 8;
+                  exportCtx.shadowOffsetY = 8;
+                }
               }
               
               if (layer.ref.filters) {
@@ -14068,6 +14485,22 @@ function performSandboxedDownload(canvas, filename) {
             ctx.translate(-centerX, -centerY);
           }
           
+          // NEW: Apply 3D Transform from transform3D property
+          if (layer.ref.transform3D && window.apply3DTransform) {
+            const centerX = (layer.ref.x || 0) + layer.ref.width / 2;
+            const centerY = (layer.ref.y || 0) + layer.ref.height / 2;
+            ctx.translate(centerX, centerY);
+            window.apply3DTransform(ctx, layer.ref.transform3D);
+            ctx.translate(-centerX, -centerY);
+            
+            if (layer.ref.transform3D.shadow) {
+              ctx.shadowColor = 'rgba(0,0,0,0.3)';
+              ctx.shadowBlur = 15;
+              ctx.shadowOffsetX = 8;
+              ctx.shadowOffsetY = 8;
+            }
+          }
+          
           if (layer.ref.filters) {
              const f = layer.ref.filters;
              ctx.filter = `brightness(${f.brightness}%) contrast(${f.contrast}%) saturate(${f.saturate}%) hue-rotate(${f.hue}deg) blur(${f.blur}px) sepia(${f.sepia}%) grayscale(${f.grayscale}%) invert(${f.invert}%) opacity(${f.opacity}%)`;
@@ -15157,6 +15590,90 @@ function performSandboxedDownload(canvas, filename) {
             // Context is already centered by caller
             ctx.scale(scaleX, scaleY);
         }
+    };
+
+    // NEW: Apply 3D Transform from the transform3D property
+    window.apply3DTransform = function(ctx, t3d) {
+        if (!t3d) return;
+        
+        // Convert degrees to radians
+        const rotX = (t3d.rotateX || 0) * Math.PI / 180;
+        const rotY = (t3d.rotateY || 0) * Math.PI / 180;
+        const rotZ = (t3d.rotateZ || 0) * Math.PI / 180;
+        const skewX = (t3d.skewX || 0) * Math.PI / 180;
+        const skewY = (t3d.skewY || 0) * Math.PI / 180;
+        
+        // Apply perspective simulation via scale
+        // Perspective affects how much the rotateX and rotateY distort the object
+        const perspFactor = 1 / (1 + ((t3d.perspective || 800) / 2000));
+        
+        // Simulate 3D rotation with 2D transforms
+        // RotateY affects horizontal scaling (like looking from the side)
+        const scaleX = Math.cos(rotY);
+        // RotateX affects vertical scaling (like looking from top/bottom)  
+        const scaleY = Math.cos(rotX);
+        
+        // Apply skew transforms
+        ctx.transform(1, Math.tan(skewY), Math.tan(skewX), 1, 0, 0);
+        
+        // Apply rotation around Z axis
+        if (rotZ !== 0) {
+            ctx.rotate(rotZ);
+        }
+        
+        // Apply pseudo-3D perspective effect
+        ctx.scale(scaleX, scaleY);
+        
+        // Additional perspective shear
+        const shearX = Math.sin(rotY) * perspFactor * 0.5;
+        const shearY = Math.sin(rotX) * perspFactor * 0.5;
+        ctx.transform(1, shearY, shearX, 1, 0, 0);
+    };
+
+    // Draw element with 3D extrusion layers
+    window.draw3DExtrusion = function(ctx, t3d, x, y, w, h, drawFn, baseColor) {
+        if (!t3d || !t3d.extrusion || t3d.extrusion <= 0) {
+            drawFn();
+            return;
+        }
+        
+        const depth = t3d.extrusion;
+        const layers = t3d.layers || 1;
+        const extColor = t3d.extrusionColor || '#333333';
+        
+        // Parse extrusion color
+        const ec = extColor;
+        
+        // Direction based on rotation
+        const rotX = (t3d.rotateX || 0);
+        const rotY = (t3d.rotateY || 0);
+        const dirX = rotY > 0 ? 1 : rotY < 0 ? -1 : 0;
+        const dirY = rotX > 0 ? -1 : rotX < 0 ? 1 : 0;
+        const defaultDir = (dirX === 0 && dirY === 0) ? 1 : 0;
+        
+        // Draw shadow layers (back to front)
+        for (let i = layers; i >= 1; i--) {
+            const offset = (depth / layers) * i;
+            const alpha = 0.3 - (i / layers) * 0.2;
+            
+            ctx.save();
+            ctx.translate(
+                offset * (dirX || defaultDir),
+                offset * (dirY || defaultDir)
+            );
+            ctx.globalAlpha = ctx.globalAlpha * alpha;
+            
+            // Use extrusion color
+            const originalFillStyle = ctx.fillStyle;
+            ctx.fillStyle = ec;
+            drawFn(true); // true = shadow layer
+            ctx.fillStyle = originalFillStyle;
+            
+            ctx.restore();
+        }
+        
+        // Draw main element on top
+        drawFn(false);
     };
 
     window.drawAdvancedEffectPost = function(ctx, effect, x, y, width, height, drawCallback) {
