@@ -2389,10 +2389,6 @@ function selectTextElement(textElement) {
     document.getElementById('deleteTextBtn').disabled = false;
     // Activer overlay flèches pour déplacement
     showTextMoveControls(textElement);
-    // Afficher le panel de sélection centré au-dessus
-    if (typeof showSelectionPanelForElement === 'function') {
-      showSelectionPanelForElement(textElement);
-    }
     
     redrawAll();
 }
@@ -3212,7 +3208,6 @@ selectionPanel.className = 'absolute bg-gray-800 text-white rounded-lg shadow-lg
 selectionPanel.style.pointerEvents = 'auto';
 selectionPanel.style.display = 'none';
 selectionPanel.innerHTML = `
-  <button id="spMove" class="p-1 hover:bg-gray-700 rounded cursor-move" title="Déplacer (maintenir cliqué)">✥</button>
   <button id="spCut" class="p-1 hover:bg-gray-700 rounded" title="Couper">✂️</button>
   <button id="spCopy" class="p-1 hover:bg-gray-700 rounded" title="Copier">📋</button>
   <button id="spDelete" class="p-1 hover:bg-gray-700 rounded" title="Supprimer">🗑️</button>
@@ -3231,56 +3226,6 @@ selectionPanel.innerHTML = `
 `;
 document.body.appendChild(selectionPanel);
 
-// Gestion du bouton de déplacement par maintien
-let isPanelDragging = false;
-let panelDragElement = null;
-let panelDragStartOffset = { x: 0, y: 0 };
-
-document.getElementById('spMove').addEventListener('mousedown', (e) => {
-  e.preventDefault();
-  e.stopPropagation();
-  if (activeTextElement) {
-    isPanelDragging = true;
-    panelDragElement = activeTextElement;
-    const canvasEl = document.getElementById('drawingCanvas');
-    const rect = canvasEl.getBoundingClientRect();
-    const scaleX = rect.width / canvasEl.width;
-    const scaleY = rect.height / canvasEl.height;
-    const z = window.zoomLevel || 1;
-    const offX = window.canvasOffset?.x || 0;
-    const offY = window.canvasOffset?.y || 0;
-    // Convertir position souris en coordonnées canvas
-    const canvasX = ((e.clientX - rect.left) / scaleX - offX) / z;
-    const canvasY = ((e.clientY - rect.top) / scaleY - offY) / z;
-    panelDragStartOffset = { x: canvasX - panelDragElement.x, y: canvasY - panelDragElement.y };
-  }
-});
-
-document.addEventListener('mousemove', (e) => {
-  if (isPanelDragging && panelDragElement) {
-    const canvasEl = document.getElementById('drawingCanvas');
-    const rect = canvasEl.getBoundingClientRect();
-    const scaleX = rect.width / canvasEl.width;
-    const scaleY = rect.height / canvasEl.height;
-    const z = window.zoomLevel || 1;
-    const offX = window.canvasOffset?.x || 0;
-    const offY = window.canvasOffset?.y || 0;
-    // Convertir position souris en coordonnées canvas
-    const canvasX = ((e.clientX - rect.left) / scaleX - offX) / z;
-    const canvasY = ((e.clientY - rect.top) / scaleY - offY) / z;
-    panelDragElement.x = canvasX - panelDragStartOffset.x;
-    panelDragElement.y = canvasY - panelDragStartOffset.y;
-    // Mettre à jour le panel position
-    updateSelectionPanelPosition();
-    if (typeof redrawAll === 'function') redrawAll();
-  }
-});
-
-document.addEventListener('mouseup', () => {
-  isPanelDragging = false;
-  panelDragElement = null;
-});
-
 let clipboardTextElement = null;
 let draggingText = null;
 // Éviter redeclaration: utiliser global unique
@@ -3293,48 +3238,9 @@ function showSelectionPanelAt(x, y) {
   selectionPanel.style.display = 'flex';
 }
 
-// Nouvelle fonction: positionner le panel centré au-dessus de l'élément sélectionné
-function updateSelectionPanelPosition() {
-  if (!activeTextElement) {
-    hideSelectionPanel();
-    return;
-  }
-  const canvasEl = document.getElementById('drawingCanvas');
-  const rect = canvasEl.getBoundingClientRect();
-  const scaleX = rect.width / canvasEl.width;
-  const scaleY = rect.height / canvasEl.height;
-  const z = window.zoomLevel || 1;
-  const offX = window.canvasOffset?.x || 0;
-  const offY = window.canvasOffset?.y || 0;
-  
-  const te = activeTextElement;
-  const textWidth = te.width || te.measuredWidth || 100;
-  const textCenterX = te.x + textWidth / 2;
-  
-  // Position écran du centre du texte
-  const screenX = rect.left + ((textCenterX * z + offX) * scaleX);
-  const screenY = rect.top + ((te.y * z + offY) * scaleY);
-  
-  // Centrer le panel au-dessus
-  const panelWidth = selectionPanel.offsetWidth || 200;
-  const panelHeight = selectionPanel.offsetHeight || 40;
-  
-  selectionPanel.style.left = (screenX - panelWidth / 2) + 'px';
-  selectionPanel.style.top = (screenY - panelHeight - 15) + 'px';
-  selectionPanel.style.display = 'flex';
-}
-
-// Afficher le panel centré sur l'élément sélectionné
-function showSelectionPanelForElement(element) {
-  if (!element) return;
-  activeTextElement = element;
-  updateSelectionPanelPosition();
-}
-
 function hideSelectionPanel() {
   selectionPanel.style.display = 'none';
-  const rotPopup = document.getElementById('rotationPopup');
-  if (rotPopup) rotPopup.classList.add('hidden');
+  document.getElementById('rotationPopup').classList.add('hidden');
 }
 
 // Gestion clic droit sur canvas pour textes
@@ -3690,10 +3596,6 @@ canvas.onpointermove = function(e){
     // Mettre à jour la popup en temps réel pendant le déplacement
     if (typeof updateTextMoveControlsPosition === 'function') {
       updateTextMoveControlsPosition(activeTextElement);
-    }
-    // Mettre à jour le panel de sélection
-    if (typeof updateSelectionPanelPosition === 'function') {
-      updateSelectionPanelPosition();
     }
     redrawAll();
     e.preventDefault();
@@ -5204,11 +5106,17 @@ document.addEventListener('keydown', (e) => {
       if (selectedElementType === 'drawing') {
         // Pour les dessins, utiliser le système existant selectedDrawingStrokeId
         selectedDrawingStrokeId = elementInfo.element.id;
+        selectedImageIndex = -1; // Réinitialiser
         // Mettre à jour les contrôles de style
         updateBrushStyleControlsFromElement(selectedElement);
-      } else {
-        // Réinitialiser la sélection de dessin si on sélectionne autre chose
+      } else if (selectedElementType === 'image') {
+        // Pour les images, synchroniser avec selectedImageIndex
+        selectedImageIndex = elementInfo.index;
         selectedDrawingStrokeId = null;
+      } else {
+        // Réinitialiser la sélection de dessin et image si on sélectionne autre chose
+        selectedDrawingStrokeId = null;
+        selectedImageIndex = -1;
       }
       
       // Afficher le panneau de style artistique pour les formes
@@ -5472,14 +5380,38 @@ document.addEventListener('keydown', (e) => {
       }
       
       const canvasRect = canvas.getBoundingClientRect();
-      const panelX = canvasRect.left + bounds.x + bounds.w + 10;
-      const panelY = canvasRect.top + bounds.y;
+      const z = window.zoomLevel || 1;
+      const offX = window.canvasOffset?.x || 0;
+      const offY = window.canvasOffset?.y || 0;
       
-      selectionPanel.style.left = panelX + 'px';
-      selectionPanel.style.top = panelY + 'px';
+      // Ratio entre la taille affichée et la taille interne du canvas
+      const scaleX = canvasRect.width / canvas.width;
+      const scaleY = canvasRect.height / canvas.height;
+      
+      // Calculer la position écran du centre-haut de l'élément
+      const elementCenterX = bounds.x + bounds.w / 2;
+      const elementTopY = bounds.y;
+      const screenCenterX = canvasRect.left + ((elementCenterX * z + offX) * scaleX);
+      const screenTopY = canvasRect.top + ((elementTopY * z + offY) * scaleY);
+      
+      // Positionner temporairement pour obtenir la largeur
       selectionPanel.style.display = 'flex';
+      selectionPanel.style.visibility = 'hidden';
+      const panelWidth = selectionPanel.offsetWidth || 200;
+      const panelHeight = selectionPanel.offsetHeight || 40;
+      selectionPanel.style.visibility = 'visible';
+      
+      // Centrer au-dessus de l'élément
+      const panelX = screenCenterX - panelWidth / 2;
+      const panelY = screenTopY - panelHeight - 10;
+      
+      selectionPanel.style.left = Math.max(0, panelX) + 'px';
+      selectionPanel.style.top = Math.max(0, panelY) + 'px';
       
       selectionPanel.innerHTML = `
+        <button id="spMoveBtn" class="p-1 hover:bg-gray-700 rounded cursor-move" title="Déplacer (maintenir cliqué)">
+          ✥
+        </button>
         <button onclick="cutSelectedElement()" class="p-1 hover:bg-gray-700 rounded" title="Couper">
           ✂️
         </button>
@@ -5507,6 +5439,91 @@ document.addEventListener('keydown', (e) => {
         </div>
       `;
       
+      // Ajouter le handler pour le bouton de déplacement
+      setTimeout(() => {
+        const moveBtn = document.getElementById('spMoveBtn');
+        if (moveBtn && selectedElement) {
+          let isDraggingFromPanel = false;
+          let panelDragOffset = { x: 0, y: 0 };
+          
+          moveBtn.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            isDraggingFromPanel = true;
+            
+            // Calculer l'offset initial
+            const canvasRect = canvas.getBoundingClientRect();
+            const z = window.zoomLevel || 1;
+            const offX = window.canvasOffset?.x || 0;
+            const offY = window.canvasOffset?.y || 0;
+            const scaleX = canvasRect.width / canvas.width;
+            const scaleY = canvasRect.height / canvas.height;
+            const canvasX = ((e.clientX - canvasRect.left) / scaleX - offX) / z;
+            const canvasY = ((e.clientY - canvasRect.top) / scaleY - offY) / z;
+            
+            if (selectedElementType === 'shape') {
+              panelDragOffset.x = canvasX - selectedElement.x;
+              panelDragOffset.y = canvasY - selectedElement.y;
+            } else if (selectedElementType === 'image') {
+              panelDragOffset.x = canvasX - (selectedElement.x || 0);
+              panelDragOffset.y = canvasY - (selectedElement.y || 0);
+            } else if (selectedElementType === 'text') {
+              panelDragOffset.x = canvasX - selectedElement.x;
+              panelDragOffset.y = canvasY - selectedElement.y;
+            } else if (selectedElementType === 'drawing') {
+              const bounds = getDrawingBounds(selectedElement);
+              panelDragOffset.x = canvasX - bounds.x;
+              panelDragOffset.y = canvasY - bounds.y;
+            }
+          });
+          
+          document.addEventListener('mousemove', (e) => {
+            if (!isDraggingFromPanel || !selectedElement) return;
+            
+            const canvasRect = canvas.getBoundingClientRect();
+            const z = window.zoomLevel || 1;
+            const offX = window.canvasOffset?.x || 0;
+            const offY = window.canvasOffset?.y || 0;
+            const scaleX = canvasRect.width / canvas.width;
+            const scaleY = canvasRect.height / canvas.height;
+            const canvasX = ((e.clientX - canvasRect.left) / scaleX - offX) / z;
+            const canvasY = ((e.clientY - canvasRect.top) / scaleY - offY) / z;
+            
+            const newX = canvasX - panelDragOffset.x;
+            const newY = canvasY - panelDragOffset.y;
+            
+            if (selectedElementType === 'shape') {
+              selectedElement.x = newX;
+              selectedElement.y = newY;
+            } else if (selectedElementType === 'image') {
+              selectedElement.x = newX;
+              selectedElement.y = newY;
+            } else if (selectedElementType === 'text') {
+              selectedElement.x = newX;
+              selectedElement.y = newY;
+            } else if (selectedElementType === 'drawing') {
+              // Déplacer tous les points du stroke
+              const bounds = getDrawingBounds(selectedElement);
+              const deltaX = newX - bounds.x;
+              const deltaY = newY - bounds.y;
+              if (selectedElement.points) {
+                selectedElement.points.forEach(p => {
+                  p.x += deltaX;
+                  p.y += deltaY;
+                });
+              }
+            }
+            
+            redrawAll();
+            updateSelectionControls();
+          });
+          
+          document.addEventListener('mouseup', () => {
+            isDraggingFromPanel = false;
+          });
+        }
+      }, 50);
+      
       // Initialize rotation slider value
       setTimeout(() => {
         const slider = selectionPanel.querySelector('input[type=range]');
@@ -5524,6 +5541,48 @@ document.addEventListener('keydown', (e) => {
           display.textContent = Math.round(currentRotation);
         }
       }, 0);
+    }
+
+    // Fonction pour mettre à jour la position du panneau de sélection
+    function updateSelectionControls() {
+      if (!isElementSelected || !selectedElement) return;
+      
+      const selectionPanel = document.getElementById('selectionPanel');
+      if (!selectionPanel || selectionPanel.style.display === 'none') return;
+      
+      let bounds = null;
+      if (selectedElementType === 'shape') {
+        bounds = { x: selectedElement.x, y: selectedElement.y, w: selectedElement.w, h: selectedElement.h };
+      } else if (selectedElementType === 'drawing') {
+        bounds = getDrawingBounds(selectedElement);
+      } else if (selectedElementType === 'image') {
+        bounds = { x: selectedElement.x || 0, y: selectedElement.y || 0, w: selectedElement.width, h: selectedElement.height };
+      } else if (selectedElementType === 'text') {
+        bounds = { x: selectedElement.x, y: selectedElement.y, w: selectedElement.width || 100, h: selectedElement.height || selectedElement.fontSize || 24 };
+      }
+      
+      if (!bounds) return;
+      
+      const canvasRect = canvas.getBoundingClientRect();
+      const z = window.zoomLevel || 1;
+      const offX = window.canvasOffset?.x || 0;
+      const offY = window.canvasOffset?.y || 0;
+      const scaleX = canvasRect.width / canvas.width;
+      const scaleY = canvasRect.height / canvas.height;
+      
+      const elementCenterX = bounds.x + bounds.w / 2;
+      const elementTopY = bounds.y;
+      const screenCenterX = canvasRect.left + ((elementCenterX * z + offX) * scaleX);
+      const screenTopY = canvasRect.top + ((elementTopY * z + offY) * scaleY);
+      
+      const panelWidth = selectionPanel.offsetWidth || 200;
+      const panelHeight = selectionPanel.offsetHeight || 40;
+      
+      const panelX = screenCenterX - panelWidth / 2;
+      const panelY = screenTopY - panelHeight - 10;
+      
+      selectionPanel.style.left = Math.max(0, panelX) + 'px';
+      selectionPanel.style.top = Math.max(0, panelY) + 'px';
     }
 
     let initialRotation = 0;
@@ -10868,20 +10927,11 @@ document.addEventListener('keydown', (e) => {
         sortedLayers.forEach(layer => {
           try {
             if (layer.type === 'image' && layer.ref && layer.ref.img) {
-              // Dessiner image avec filtres, rotation et textures
+              // Dessiner image avec filtres et textures
               exportCtx.save();
               if (layer.ref.filters) {
                  const f = layer.ref.filters;
                  exportCtx.filter = `brightness(${f.brightness}%) contrast(${f.contrast}%) saturate(${f.saturate}%) hue-rotate(${f.hue}deg) blur(${f.blur}px) sepia(${f.sepia}%) grayscale(${f.grayscale}%) invert(${f.invert}%) opacity(${f.opacity}%)`;
-              }
-              
-              // Appliquer la rotation si définie
-              if (layer.ref.rotation && layer.ref.rotation !== 0) {
-                const centerX = (layer.ref.x || 0) + layer.ref.width / 2;
-                const centerY = (layer.ref.y || 0) + layer.ref.height / 2;
-                exportCtx.translate(centerX, centerY);
-                exportCtx.rotate((layer.ref.rotation * Math.PI) / 180);
-                exportCtx.translate(-centerX, -centerY);
               }
               
               // APPLY TEXTURE TO IMAGE EXPORT
@@ -13883,19 +13933,11 @@ function performSandboxedDownload(canvas, filename) {
       // Dessiner tous les éléments dans l'ordre unifié de priorité
       sortedLayers.forEach(layer => {
         if (layer.type === 'image' && layer.ref && layer.ref.img) {
-          // Dessiner image avec filtres et rotation
+          // Dessiner image avec filtres
           ctx.save();
           if (layer.ref.filters) {
              const f = layer.ref.filters;
              ctx.filter = `brightness(${f.brightness}%) contrast(${f.contrast}%) saturate(${f.saturate}%) hue-rotate(${f.hue}deg) blur(${f.blur}px) sepia(${f.sepia}%) grayscale(${f.grayscale}%) invert(${f.invert}%) opacity(${f.opacity}%)`;
-          }
-          // Appliquer la rotation si définie
-          if (layer.ref.rotation && layer.ref.rotation !== 0) {
-            const centerX = (layer.ref.x || 0) + layer.ref.width / 2;
-            const centerY = (layer.ref.y || 0) + layer.ref.height / 2;
-            ctx.translate(centerX, centerY);
-            ctx.rotate((layer.ref.rotation * Math.PI) / 180);
-            ctx.translate(-centerX, -centerY);
           }
           ctx.drawImage(layer.ref.img, layer.ref.x || 0, layer.ref.y || 0, layer.ref.width, layer.ref.height);
           ctx.restore();
