@@ -2339,9 +2339,20 @@ function drawTextElement(ctx, textElement, opts = {}) {
         ctx.shadowBlur = intensity / 2;
     }
 
-    // Dessiner le texte principal
+    // Dessiner le texte principal avec bevel si activé
     ctx.globalAlpha = textElement.opacity !== undefined ? textElement.opacity : 1;
-    drawTextContent();
+    
+    if (textElement.bevel && textElement.bevel.enabled && window.applyBevelToCanvas) {
+        window.applyBevelToCanvas(ctx, textElement, textElement.x, textElement.y, textElement.width, textElement.height, (targetCtx) => {
+            const useCtx = targetCtx || ctx;
+            useCtx.font = ctx.font;
+            useCtx.textAlign = ctx.textAlign;
+            useCtx.textBaseline = ctx.textBaseline;
+            drawTextContent();
+        });
+    } else {
+        drawTextContent();
+    }
     
     // NEW: Apply Advanced Effects Post (Bevel, Reflection)
     if (textElement.advancedEffect && window.drawAdvancedEffectPost) {
@@ -4946,6 +4957,14 @@ document.addEventListener('keydown', (e) => {
       
       drawContent();
       
+      // NEW: Apply Bevel Effect for shapes
+      if (s.bevel && s.bevel.enabled && window.applyBevelToCanvas) {
+          // Re-draw with bevel applied (overlay effect)
+          ctx.save();
+          window.applyBevelToCanvas(ctx, s, s.x, s.y, s.w, s.h, () => drawContent());
+          ctx.restore();
+      }
+      
       // NEW: Apply Advanced Effects Post (Bevel, Reflection)
       if (s.advancedEffect && window.drawAdvancedEffectPost) {
           window.drawAdvancedEffectPost(ctx, s.advancedEffect, s.x, s.y, s.w, s.h, drawContent);
@@ -5532,11 +5551,12 @@ document.addEventListener('keydown', (e) => {
           <button onclick="toggleRotationPopup()" class="p-1 hover:bg-gray-700 rounded" title="Rotation & 3D">
             🔄
           </button>
-          <div id="rotationPopup" class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden bg-gray-800 p-3 rounded-lg shadow-lg border border-gray-600 z-50" style="width: 320px;">
+          <div id="rotationPopup" class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden bg-gray-800 p-3 rounded-lg shadow-lg border border-gray-600 z-50" style="width: 320px; max-height: 400px; overflow-y: auto;">
             <!-- Tabs -->
             <div class="flex mb-3 border-b border-gray-600">
               <button id="tabRotation" onclick="switchRotationTab('rotation')" class="flex-1 py-1 text-xs font-medium text-center border-b-2 border-blue-500 text-blue-400">Rotation</button>
-              <button id="tab3D" onclick="switchRotationTab('3d')" class="flex-1 py-1 text-xs font-medium text-center text-gray-400 hover:text-white">3D</button>
+              <button id="tab3D" onclick="switchRotationTab('3d')" class="flex-1 py-1 text-xs font-medium text-center text-gray-400 hover:text-white border-b-2 border-transparent">3D</button>
+              <button id="tabBevel" onclick="switchRotationTab('bevel')" class="flex-1 py-1 text-xs font-medium text-center text-gray-400 hover:text-white border-b-2 border-transparent">Bevel</button>
             </div>
             
             <!-- Rotation Tab Content -->
@@ -5631,6 +5651,82 @@ document.addEventListener('keydown', (e) => {
                   <option value="flip-card">Flip Card</option>
                   <option value="book">Livre Ouvert</option>
                   <option value="shadow-depth">Profondeur Ombre</option>
+                </select>
+              </div>
+            </div>
+            
+            <!-- Bevel Tab Content -->
+            <div id="tabBevelContent" class="hidden text-xs space-y-2">
+              <div class="flex items-center gap-2 mb-2">
+                <input type="checkbox" id="elBevelEnabled" class="rounded" onchange="updateBevelElement()">
+                <label class="text-gray-300 font-medium">Activer Bevel</label>
+              </div>
+              
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <label class="block text-gray-400 mb-1">Profondeur</label>
+                  <input type="range" id="elBevelDepth" min="1" max="20" value="6" class="w-full" oninput="updateBevelElement()">
+                  <div class="text-center text-gray-500" id="elBevelDepthVal">6</div>
+                </div>
+                <div>
+                  <label class="block text-gray-400 mb-1">Blur (détail)</label>
+                  <input type="range" id="elBevelBlur" min="1" max="12" value="4" class="w-full" oninput="updateBevelElement()">
+                  <div class="text-center text-gray-500" id="elBevelBlurVal">4</div>
+                </div>
+              </div>
+              
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <label class="block text-gray-400 mb-1">Specular 1</label>
+                  <input type="range" id="elBevelSpec1" min="0" max="2" step="0.05" value="0.9" class="w-full" oninput="updateBevelElement()">
+                  <div class="text-center text-gray-500" id="elBevelSpec1Val">0.9</div>
+                </div>
+                <div>
+                  <label class="block text-gray-400 mb-1">Specular 2</label>
+                  <input type="range" id="elBevelSpec2" min="0" max="2" step="0.05" value="0.5" class="w-full" oninput="updateBevelElement()">
+                  <div class="text-center text-gray-500" id="elBevelSpec2Val">0.5</div>
+                </div>
+              </div>
+              
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <label class="block text-gray-400 mb-1">Type Lumière</label>
+                  <select id="elBevelLightType" class="w-full bg-gray-700 rounded px-1 py-0.5 text-white" onchange="updateBevelElement()">
+                    <option value="point">PointLight</option>
+                    <option value="directional">DirectionalLight</option>
+                    <option value="spot">SpotLight</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-gray-400 mb-1">Couleur Lumière</label>
+                  <input type="color" id="elBevelLightColor" value="#ffffff" class="w-full h-6 rounded cursor-pointer" onchange="updateBevelElement()">
+                </div>
+              </div>
+              
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <label class="block text-gray-400 mb-1">Lumière X</label>
+                  <input type="range" id="elBevelLightX" min="-200" max="200" value="-40" class="w-full" oninput="updateBevelElement()">
+                  <div class="text-center text-gray-500" id="elBevelLightXVal">-40</div>
+                </div>
+                <div>
+                  <label class="block text-gray-400 mb-1">Lumière Y</label>
+                  <input type="range" id="elBevelLightY" min="-200" max="200" value="-40" class="w-full" oninput="updateBevelElement()">
+                  <div class="text-center text-gray-500" id="elBevelLightYVal">-40</div>
+                </div>
+              </div>
+              
+              <div>
+                <label class="block text-gray-400 mb-1">Preset Bevel</label>
+                <select id="elBevelPreset" class="w-full bg-gray-700 rounded px-2 py-1 text-white" onchange="applyBevelPreset()">
+                  <option value="none">-- Aucun --</option>
+                  <option value="subtle">Subtil</option>
+                  <option value="emboss">Relief</option>
+                  <option value="deep">Profond</option>
+                  <option value="metallic">Métallique</option>
+                  <option value="soft-glow">Lueur Douce</option>
+                  <option value="hard-edge">Bords Durs</option>
+                  <option value="plastic">Plastique</option>
                 </select>
               </div>
             </div>
@@ -5829,25 +5925,36 @@ document.addEventListener('keydown', (e) => {
     window.switchRotationTab = function(tab) {
         const tabRotation = document.getElementById('tabRotation');
         const tab3D = document.getElementById('tab3D');
+        const tabBevel = document.getElementById('tabBevel');
         const rotationContent = document.getElementById('rotationTabContent');
         const content3D = document.getElementById('tab3DContent');
+        const contentBevel = document.getElementById('tabBevelContent');
+        
+        // Reset all tabs
+        [tabRotation, tab3D, tabBevel].forEach(t => {
+            if (t) {
+                t.classList.remove('border-blue-500', 'text-blue-400');
+                t.classList.add('text-gray-400', 'border-transparent');
+            }
+        });
+        [rotationContent, content3D, contentBevel].forEach(c => {
+            if (c) c.classList.add('hidden');
+        });
         
         if (tab === 'rotation') {
             tabRotation.classList.add('border-blue-500', 'text-blue-400');
-            tabRotation.classList.remove('text-gray-400');
-            tab3D.classList.remove('border-blue-500', 'text-blue-400');
-            tab3D.classList.add('text-gray-400', 'border-transparent');
+            tabRotation.classList.remove('text-gray-400', 'border-transparent');
             rotationContent.classList.remove('hidden');
-            content3D.classList.add('hidden');
-        } else {
+        } else if (tab === '3d') {
             tab3D.classList.add('border-blue-500', 'text-blue-400');
-            tab3D.classList.remove('text-gray-400');
-            tabRotation.classList.remove('border-blue-500', 'text-blue-400');
-            tabRotation.classList.add('text-gray-400', 'border-transparent');
+            tab3D.classList.remove('text-gray-400', 'border-transparent');
             content3D.classList.remove('hidden');
-            rotationContent.classList.add('hidden');
-            // Load current 3D values
             load3DValues();
+        } else if (tab === 'bevel') {
+            tabBevel.classList.add('border-blue-500', 'text-blue-400');
+            tabBevel.classList.remove('text-gray-400', 'border-transparent');
+            contentBevel.classList.remove('hidden');
+            loadBevelValues();
         }
     };
 
@@ -5914,8 +6021,9 @@ document.addEventListener('keydown', (e) => {
         if (!selectedElement) return;
         
         selectedElement.transform3D = {};
+        selectedElement.bevel = { enabled: false };
         
-        // Reset UI
+        // Reset 3D UI
         document.getElementById('el3dPerspective').value = 800;
         document.getElementById('el3dOrigin').value = 'center';
         document.getElementById('el3dRotateX').value = 0;
@@ -5963,6 +6071,266 @@ document.addEventListener('keydown', (e) => {
         if (p.shadow) document.getElementById('el3dShadow').checked = true;
         
         update3DElement();
+    };
+
+    // ==================== BEVEL FUNCTIONS ====================
+    
+    let initialBevelState = null;
+
+    function loadBevelValues() {
+        if (!selectedElement) return;
+        const b = selectedElement.bevel || {};
+        
+        const setVal = (id, val) => {
+            const el = document.getElementById(id);
+            if (el) el.value = val;
+        };
+        const setCheck = (id, val) => {
+            const el = document.getElementById(id);
+            if (el) el.checked = val;
+        };
+        
+        setCheck('elBevelEnabled', b.enabled || false);
+        setVal('elBevelDepth', b.depth || 6);
+        setVal('elBevelBlur', b.blur || 4);
+        setVal('elBevelSpec1', b.spec1 || 0.9);
+        setVal('elBevelSpec2', b.spec2 || 0.5);
+        setVal('elBevelLightType', b.lightType || 'point');
+        setVal('elBevelLightColor', b.lightColor || '#ffffff');
+        setVal('elBevelLightX', b.lightX || -40);
+        setVal('elBevelLightY', b.lightY || -40);
+        setVal('elBevelPreset', 'none');
+        
+        updateBevelDisplays();
+        initialBevelState = JSON.parse(JSON.stringify(b));
+    }
+
+    function updateBevelDisplays() {
+        const getVal = (id) => {
+            const el = document.getElementById(id);
+            return el ? el.value : '0';
+        };
+        const setDisplay = (id, val) => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = val;
+        };
+        
+        setDisplay('elBevelDepthVal', getVal('elBevelDepth'));
+        setDisplay('elBevelBlurVal', getVal('elBevelBlur'));
+        setDisplay('elBevelSpec1Val', getVal('elBevelSpec1'));
+        setDisplay('elBevelSpec2Val', getVal('elBevelSpec2'));
+        setDisplay('elBevelLightXVal', getVal('elBevelLightX'));
+        setDisplay('elBevelLightYVal', getVal('elBevelLightY'));
+    }
+
+    window.updateBevelElement = function() {
+        if (!selectedElement) return;
+        
+        const getVal = (id) => {
+            const el = document.getElementById(id);
+            return el ? el.value : null;
+        };
+        const getCheck = (id) => {
+            const el = document.getElementById(id);
+            return el ? el.checked : false;
+        };
+        
+        selectedElement.bevel = {
+            enabled: getCheck('elBevelEnabled'),
+            depth: parseFloat(getVal('elBevelDepth')) || 6,
+            blur: parseFloat(getVal('elBevelBlur')) || 4,
+            spec1: parseFloat(getVal('elBevelSpec1')) || 0.9,
+            spec2: parseFloat(getVal('elBevelSpec2')) || 0.5,
+            lightType: getVal('elBevelLightType') || 'point',
+            lightColor: getVal('elBevelLightColor') || '#ffffff',
+            lightX: parseInt(getVal('elBevelLightX')) || -40,
+            lightY: parseInt(getVal('elBevelLightY')) || -40
+        };
+        
+        updateBevelDisplays();
+        updateBevelFilter(selectedElement);
+        redrawAll();
+        drawSelectionHandles();
+    };
+
+    window.applyBevelPreset = function() {
+        const preset = document.getElementById('elBevelPreset')?.value;
+        if (!preset || preset === 'none') return;
+        
+        const presets = {
+            'subtle': { depth: 3, blur: 2, spec1: 0.4, spec2: 0.2, lightX: -30, lightY: -30 },
+            'emboss': { depth: 8, blur: 3, spec1: 1.2, spec2: 0.6, lightX: -50, lightY: -50 },
+            'deep': { depth: 15, blur: 5, spec1: 1.0, spec2: 0.8, lightX: -60, lightY: -40 },
+            'metallic': { depth: 10, blur: 2, spec1: 1.8, spec2: 1.2, lightX: -40, lightY: -60 },
+            'soft-glow': { depth: 6, blur: 8, spec1: 0.6, spec2: 0.4, lightX: 0, lightY: -50 },
+            'hard-edge': { depth: 12, blur: 1, spec1: 1.5, spec2: 0.8, lightX: -80, lightY: -20 },
+            'plastic': { depth: 7, blur: 4, spec1: 1.4, spec2: 1.0, lightX: -30, lightY: -70 }
+        };
+        
+        const p = presets[preset];
+        if (!p) return;
+        
+        document.getElementById('elBevelEnabled').checked = true;
+        document.getElementById('elBevelDepth').value = p.depth;
+        document.getElementById('elBevelBlur').value = p.blur;
+        document.getElementById('elBevelSpec1').value = p.spec1;
+        document.getElementById('elBevelSpec2').value = p.spec2;
+        document.getElementById('elBevelLightX').value = p.lightX;
+        document.getElementById('elBevelLightY').value = p.lightY;
+        
+        updateBevelElement();
+    };
+
+    window.resetBevelElement = function() {
+        if (!selectedElement) return;
+        selectedElement.bevel = { enabled: false };
+        loadBevelValues();
+        redrawAll();
+        drawSelectionHandles();
+    };
+
+    // Create or update the SVG bevel filter for an element
+    function updateBevelFilter(element) {
+        if (!element || !element.bevel || !element.bevel.enabled) return;
+        
+        const b = element.bevel;
+        const filterId = 'bevelFilter_' + (element.id || Math.random().toString(36).substr(2, 9));
+        element.bevelFilterId = filterId;
+        
+        // Create SVG defs if not exists
+        let svgDefs = document.getElementById('propaintSvgDefs');
+        if (!svgDefs) {
+            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            svg.setAttribute('width', '0');
+            svg.setAttribute('height', '0');
+            svg.style.position = 'absolute';
+            svg.style.pointerEvents = 'none';
+            svgDefs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+            svgDefs.id = 'propaintSvgDefs';
+            svg.appendChild(svgDefs);
+            document.body.appendChild(svg);
+        }
+        
+        // Remove existing filter
+        const existing = document.getElementById(filterId);
+        if (existing) existing.remove();
+        
+        // Create light tag based on type
+        const lightTag = {
+            'point': `<fePointLight x="${b.lightX}" y="${b.lightY}" z="120"/>`,
+            'directional': `<feDistantLight azimuth="${b.lightX}" elevation="${Math.abs(b.lightY)}"/>`,
+            'spot': `<feSpotLight x="${b.lightX}" y="${b.lightY}" z="120" pointsAtX="0" pointsAtY="0" pointsAtZ="0"/>`
+        }[b.lightType] || `<fePointLight x="${b.lightX}" y="${b.lightY}" z="120"/>`;
+        
+        // Create filter element
+        const filter = document.createElementNS('http://www.w3.org/2000/svg', 'filter');
+        filter.id = filterId;
+        filter.setAttribute('x', '-50%');
+        filter.setAttribute('y', '-50%');
+        filter.setAttribute('width', '200%');
+        filter.setAttribute('height', '200%');
+        filter.setAttribute('color-interpolation-filters', 'sRGB');
+        
+        filter.innerHTML = `
+            <feMorphology in="SourceAlpha" operator="dilate" radius="0" result="morph"/>
+            <feGaussianBlur in="morph" stdDeviation="${b.blur}" result="blur"/>
+            <feDiffuseLighting in="blur" lighting-color="${b.lightColor}" surfaceScale="${b.depth}" result="diffuse">
+                ${lightTag}
+            </feDiffuseLighting>
+            <feSpecularLighting in="blur" lighting-color="${b.lightColor}" surfaceScale="${b.depth}" specularConstant="${b.spec1}" specularExponent="20" result="spec1">
+                ${lightTag}
+            </feSpecularLighting>
+            <feSpecularLighting in="blur" lighting-color="${b.lightColor}" surfaceScale="${b.depth}" specularConstant="${b.spec2}" specularExponent="40" result="spec2">
+                ${lightTag}
+            </feSpecularLighting>
+            <feComposite in="diffuse" in2="SourceAlpha" operator="in" result="d"/>
+            <feComposite in="spec1" in2="SourceAlpha" operator="in" result="s1"/>
+            <feComposite in="spec2" in2="SourceAlpha" operator="in" result="s2"/>
+            <feComposite in="d" in2="SourceGraphic" operator="arithmetic" k1="0" k2="1" k3="1" k4="0" result="base"/>
+            <feComposite in="s1" in2="base" operator="arithmetic" k1="0" k2="1" k3="1" k4="0" result="base2"/>
+            <feComposite in="s2" in2="base2" operator="arithmetic" k1="0" k2="1" k3="1" k4="0"/>
+        `;
+        
+        svgDefs.appendChild(filter);
+    }
+
+    // Apply bevel effect using canvas - simulates the SVG filter effect
+    window.applyBevelToCanvas = function(ctx, element, x, y, w, h, drawFn) {
+        if (!element.bevel || !element.bevel.enabled) {
+            drawFn();
+            return;
+        }
+        
+        const b = element.bevel;
+        
+        // Create temporary canvas for the element
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = w + 100; // Extra space for effects
+        tempCanvas.height = h + 100;
+        const tempCtx = tempCanvas.getContext('2d');
+        
+        // Offset to center
+        const offsetX = 50;
+        const offsetY = 50;
+        
+        // Save original position and draw on temp canvas
+        tempCtx.save();
+        tempCtx.translate(offsetX - x, offsetY - y);
+        drawFn(tempCtx);
+        tempCtx.restore();
+        
+        // Apply lighting simulation
+        const imageData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+        const data = imageData.data;
+        
+        // Simple emboss/bevel simulation
+        const depth = b.depth / 10;
+        const lightAngle = Math.atan2(b.lightY, b.lightX);
+        const lightIntensity = b.spec1;
+        
+        for (let i = 0; i < data.length; i += 4) {
+            const alpha = data[i + 3];
+            if (alpha > 0) {
+                // Calculate pixel position
+                const pixelIndex = i / 4;
+                const px = pixelIndex % tempCanvas.width;
+                const py = Math.floor(pixelIndex / tempCanvas.width);
+                
+                // Get neighboring alpha values for edge detection
+                const getAlpha = (dx, dy) => {
+                    const idx = ((py + dy) * tempCanvas.width + (px + dx)) * 4 + 3;
+                    return idx >= 0 && idx < data.length ? data[idx] : 0;
+                };
+                
+                const leftAlpha = getAlpha(-1, 0);
+                const rightAlpha = getAlpha(1, 0);
+                const topAlpha = getAlpha(0, -1);
+                const bottomAlpha = getAlpha(0, 1);
+                
+                // Calculate gradient (edge detection)
+                const gradX = (rightAlpha - leftAlpha) / 255;
+                const gradY = (bottomAlpha - topAlpha) / 255;
+                
+                // Light direction dot product
+                const lightX = Math.cos(lightAngle);
+                const lightY = Math.sin(lightAngle);
+                const dot = gradX * lightX + gradY * lightY;
+                
+                // Apply highlight/shadow based on light direction
+                const highlight = Math.max(0, dot * depth * lightIntensity * 50);
+                const shadow = Math.max(0, -dot * depth * 30);
+                
+                // Modify pixel colors
+                data[i] = Math.min(255, data[i] + highlight - shadow);     // R
+                data[i + 1] = Math.min(255, data[i + 1] + highlight - shadow); // G
+                data[i + 2] = Math.min(255, data[i + 2] + highlight - shadow); // B
+            }
+        }
+        
+        tempCtx.putImageData(imageData, 0, 0);
+        
+        // Draw back to main canvas
+        ctx.drawImage(tempCanvas, x - offsetX, y - offsetY);
     };
 
     // Function to update rotation from slider
@@ -9202,6 +9570,15 @@ document.addEventListener('keydown', (e) => {
           }
           
           ctx.drawImage(imgObj.img, imgObj.x || 0, imgObj.y || 0, imgObj.width, imgObj.height);
+          
+          // NEW: Apply Bevel Effect for images
+          if (imgObj.bevel && imgObj.bevel.enabled && window.applyBevelToCanvas) {
+              ctx.save();
+              window.applyBevelToCanvas(ctx, imgObj, imgObj.x || 0, imgObj.y || 0, imgObj.width, imgObj.height, () => {
+                  ctx.drawImage(imgObj.img, imgObj.x || 0, imgObj.y || 0, imgObj.width, imgObj.height);
+              });
+              ctx.restore();
+          }
           
           // NEW: Apply Advanced Effects Post
           if (imgObj.advancedEffect && window.drawAdvancedEffectPost) {
