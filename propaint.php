@@ -10868,7 +10868,7 @@ document.addEventListener('keydown', (e) => {
         sortedLayers.forEach(layer => {
           try {
             if (layer.type === 'image' && layer.ref && layer.ref.img) {
-              // Dessiner image avec filtres, textures et rotation
+              // Dessiner image avec filtres, rotation et textures
               exportCtx.save();
               if (layer.ref.filters) {
                  const f = layer.ref.filters;
