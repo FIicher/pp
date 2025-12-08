@@ -8770,6 +8770,15 @@ document.addEventListener('keydown', (e) => {
         if (imgObj.img) {
           ctx.save();
           
+          // Appliquer la rotation si définie
+          if (imgObj.rotation && imgObj.rotation !== 0) {
+            const centerX = (imgObj.x || 0) + imgObj.width / 2;
+            const centerY = (imgObj.y || 0) + imgObj.height / 2;
+            ctx.translate(centerX, centerY);
+            ctx.rotate((imgObj.rotation * Math.PI) / 180);
+            ctx.translate(-centerX, -centerY);
+          }
+          
           // NEW: Apply Advanced Effects Transform
           if (imgObj.advancedEffect && window.applyAdvancedEffectTransform) {
               const centerX = (imgObj.x || 0) + imgObj.width / 2;
@@ -11032,8 +11041,18 @@ document.addEventListener('keydown', (e) => {
         sortedLayers.forEach(layer => {
           try {
             if (layer.type === 'image' && layer.ref && layer.ref.img) {
-              // Dessiner image avec filtres et textures
+              // Dessiner image avec filtres, rotation et textures
               exportCtx.save();
+              
+              // Appliquer la rotation si définie
+              if (layer.ref.rotation && layer.ref.rotation !== 0) {
+                const centerX = (layer.ref.x || 0) + layer.ref.width / 2;
+                const centerY = (layer.ref.y || 0) + layer.ref.height / 2;
+                exportCtx.translate(centerX, centerY);
+                exportCtx.rotate((layer.ref.rotation * Math.PI) / 180);
+                exportCtx.translate(-centerX, -centerY);
+              }
+              
               if (layer.ref.filters) {
                  const f = layer.ref.filters;
                  exportCtx.filter = `brightness(${f.brightness}%) contrast(${f.contrast}%) saturate(${f.saturate}%) hue-rotate(${f.hue}deg) blur(${f.blur}px) sepia(${f.sepia}%) grayscale(${f.grayscale}%) invert(${f.invert}%) opacity(${f.opacity}%)`;
@@ -14038,8 +14057,18 @@ function performSandboxedDownload(canvas, filename) {
       // Dessiner tous les éléments dans l'ordre unifié de priorité
       sortedLayers.forEach(layer => {
         if (layer.type === 'image' && layer.ref && layer.ref.img) {
-          // Dessiner image avec filtres
+          // Dessiner image avec filtres et rotation
           ctx.save();
+          
+          // Appliquer la rotation si définie
+          if (layer.ref.rotation && layer.ref.rotation !== 0) {
+            const centerX = (layer.ref.x || 0) + layer.ref.width / 2;
+            const centerY = (layer.ref.y || 0) + layer.ref.height / 2;
+            ctx.translate(centerX, centerY);
+            ctx.rotate((layer.ref.rotation * Math.PI) / 180);
+            ctx.translate(-centerX, -centerY);
+          }
+          
           if (layer.ref.filters) {
              const f = layer.ref.filters;
              ctx.filter = `brightness(${f.brightness}%) contrast(${f.contrast}%) saturate(${f.saturate}%) hue-rotate(${f.hue}deg) blur(${f.blur}px) sepia(${f.sepia}%) grayscale(${f.grayscale}%) invert(${f.invert}%) opacity(${f.opacity}%)`;
