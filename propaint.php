@@ -1,74 +1,4 @@
-﻿<?php
-// GESTION DES UPLOADS DE FORMES IMG
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['formeImgUpload'])) {
-    header('Content-Type: application/json');
-    $response = ['success' => false, 'message' => ''];
-    try {
-        $uploadDir = __DIR__ . '/formeimgpropaint/';
-        if (!file_exists($uploadDir)) {
-            if (!mkdir($uploadDir, 0755, true)) {
-                throw new Exception("Impossible de créer le dossier formeimgpropaint");
-            }
-        }
-        $file = $_FILES['formeImgUpload'];
-        $fileName = $file['name'];
-        $fileTmp = $file['tmp_name'];
-        $fileExt = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
-        
-        if (in_array($fileExt, ['png', 'jpg', 'jpeg', 'webp'])) {
-            // Nettoyer le nom de fichier
-            $cleanName = preg_replace('/[^a-zA-Z0-9._-]/', '', $fileName);
-            $destPath = $uploadDir . $cleanName;
-            
-            if (move_uploaded_file($fileTmp, $destPath)) {
-                $response['success'] = true;
-                $response['message'] = "Image uploadée avec succès";
-                $response['url'] = 'formeimgpropaint/' . $cleanName;
-            } else {
-                throw new Exception("Erreur lors du déplacement du fichier");
-            }
-        } else {
-            throw new Exception("Format non supporté (PNG, JPG, WEBP)");
-        }
-    } catch (Exception $e) {
-        $response['message'] = $e->getMessage();
-    }
-    echo json_encode($response);
-    exit;
-}
-
-// LISTAGE DES FORMES IMG
-if (isset($_GET['action']) && $_GET['action'] === 'list_formeimgs') {
-    header('Content-Type: application/json');
-    $dir = __DIR__ . '/formeimgpropaint/';
-    $files = [];
-    if (is_dir($dir)) {
-        foreach (scandir($dir) as $f) {
-            if (preg_match('/\.(png|jpg|jpeg|webp)$/i', $f)) {
-                $files[] = 'formeimgpropaint/' . $f;
-            }
-        }
-    }
-    echo json_encode($files);
-    exit;
-}
-
-// LISTAGE DES TEXTURES
-if (isset($_GET['action']) && $_GET['action'] === 'list_textures') {
-    header('Content-Type: application/json');
-    $dir = __DIR__ . '/texture/';
-    $files = [];
-    if (is_dir($dir)) {
-        foreach (scandir($dir) as $f) {
-            if (preg_match('/\.(png|jpg|jpeg|webp|avif)$/i', $f)) {
-                $files[] = 'texture/' . $f;
-            }
-        }
-    }
-    echo json_encode($files);
-    exit;
-}
-
+<?php
 // GESTION DES UPLOADS DE POLICES (FONTS)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['fontUpload'])) {
     header('Content-Type: application/json');
@@ -220,121 +150,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['fontUpload'])) {
     <div class="flex items-center bg-[#2d2d2d] text-[#c0c0c0] text-[13px] font-normal px-2 select-text" style="font-family: Arial, sans-serif;">
       <div class="flex space-x-4">
         <span class="cursor-default">File</span>
-        <span class="cursor-pointer hover:text-white relative group">
-            Edit
-            <div class="absolute left-0 top-full bg-[#3a3a3a] border border-[#555] hidden group-hover:block min-w-[150px] z-50 shadow-lg">
-                <button onclick="copyObjectToLibrary()" class="block w-full text-left px-4 py-2 hover:bg-[#4a4a4a]">Objet Copier</button>
-                <button onclick="showClipboardModal()" class="block w-full text-left px-4 py-2 hover:bg-[#4a4a4a]">Bibliothèque</button>
-            </div>
-        </span>
+        <span class="cursor-default">Edit</span>
         <span class="cursor-default">Image</span>
         <span class="cursor-default">Layer</span>
         <span class="cursor-default">Type</span>
         <span class="cursor-default">Select</span>
         <span class="cursor-default">Filter</span>
         <span class="cursor-default">View</span>
-        <span class="cursor-pointer hover:text-white relative group">
-            Window
-            <div class="absolute left-0 top-full bg-[#3a3a3a] border border-[#555] hidden group-hover:block min-w-[200px] z-50 shadow-lg">
-                <button onclick="showProjectOptions()" class="block w-full text-left px-4 py-2 hover:bg-[#4a4a4a]">Affichage Projet</button>
-            </div>
-        </span>
+        <span class="cursor-default">Window</span>
         <span class="cursor-default">Help</span>
       </div>
-    </div>
-
-    <!-- Project Options Modal -->
-    <div id="projectOptionsModal" class="fixed inset-0 bg-black bg-opacity-80 z-50 hidden flex items-center justify-center">
-        <div class="bg-[#2d2d2d] w-[600px] max-h-[90vh] rounded-lg flex flex-col relative border border-[#555] p-4 overflow-y-auto">
-            <button onclick="document.getElementById('projectOptionsModal').classList.add('hidden')" class="absolute top-2 right-2 text-red-500 hover:text-red-400 text-2xl z-50">
-                <i class="fas fa-times"></i>
-            </button>
-            <h2 class="text-xl mb-4 text-[#f0d98c] border-b border-[#555] pb-2">Options d'Affichage Projet</h2>
-            
-            <div class="grid grid-cols-2 gap-4 mb-4">
-                <!-- Social Media -->
-                <div>
-                    <h3 class="text-[#00aaff] font-bold mb-2 text-sm">Réseaux Sociaux</h3>
-                    <div class="space-y-1">
-                        <button onclick="resizeCanvas(1280, 720)" class="w-full text-left px-3 py-2 bg-[#3a3a3a] hover:bg-[#4a4a4a] rounded text-xs">YouTube Miniature HD (1280x720)</button>
-                        <button onclick="resizeCanvas(3840, 2160)" class="w-full text-left px-3 py-2 bg-[#3a3a3a] hover:bg-[#4a4a4a] rounded text-xs">YouTube Miniature 4K (3840x2160)</button>
-                        <button onclick="resizeCanvas(1080, 1920)" class="w-full text-left px-3 py-2 bg-[#3a3a3a] hover:bg-[#4a4a4a] rounded text-xs">Shorts / TikTok / Reel HD (1080x1920)</button>
-                        <button onclick="resizeCanvas(2160, 3840)" class="w-full text-left px-3 py-2 bg-[#3a3a3a] hover:bg-[#4a4a4a] rounded text-xs">Shorts / TikTok 4K (2160x3840)</button>
-                    </div>
-                </div>
-                
-                <!-- Wallpapers -->
-                <div>
-                    <h3 class="text-[#00aaff] font-bold mb-2 text-sm">Fonds d'écran</h3>
-                    <div class="space-y-1">
-                        <button onclick="resizeCanvas(1920, 1080)" class="w-full text-left px-3 py-2 bg-[#3a3a3a] hover:bg-[#4a4a4a] rounded text-xs">Wallpaper PC HD (1920x1080)</button>
-                        <button onclick="resizeCanvas(3840, 2160)" class="w-full text-left px-3 py-2 bg-[#3a3a3a] hover:bg-[#4a4a4a] rounded text-xs">Wallpaper PC 4K (3840x2160)</button>
-                        <button onclick="resizeCanvas(1080, 1920)" class="w-full text-left px-3 py-2 bg-[#3a3a3a] hover:bg-[#4a4a4a] rounded text-xs">Wallpaper Smartphone (1080x1920)</button>
-                    </div>
-                </div>
-                
-                <!-- Bannières -->
-                <div>
-                    <h3 class="text-[#00aaff] font-bold mb-2 text-sm">Bannières</h3>
-                    <div class="space-y-1">
-                        <button onclick="resizeCanvas(2000, 500)" class="w-full text-left px-3 py-2 bg-[#3a3a3a] hover:bg-[#4a4a4a] rounded text-xs">Bannière Fine (2000x500)</button>
-                        <button onclick="resizeCanvas(2000, 1000)" class="w-full text-left px-3 py-2 bg-[#3a3a3a] hover:bg-[#4a4a4a] rounded text-xs">Bannière Normale (2000x1000)</button>
-                        <button onclick="resizeCanvas(2000, 1500)" class="w-full text-left px-3 py-2 bg-[#3a3a3a] hover:bg-[#4a4a4a] rounded text-xs">Bannière Large (2000x1500)</button>
-                        <button onclick="resizeCanvas(2000, 2000)" class="w-full text-left px-3 py-2 bg-[#3a3a3a] hover:bg-[#4a4a4a] rounded text-xs">Bannière Très Large (2000x2000)</button>
-                    </div>
-                </div>
-
-                <!-- Bannières Verticales -->
-                <div>
-                    <h3 class="text-[#00aaff] font-bold mb-2 text-sm">Bannières Verticales</h3>
-                    <div class="space-y-1">
-                        <button onclick="resizeCanvas(500, 2000)" class="w-full text-left px-3 py-2 bg-[#3a3a3a] hover:bg-[#4a4a4a] rounded text-xs">Verticale Fine (500x2000)</button>
-                        <button onclick="resizeCanvas(1000, 2000)" class="w-full text-left px-3 py-2 bg-[#3a3a3a] hover:bg-[#4a4a4a] rounded text-xs">Verticale Normale (1000x2000)</button>
-                        <button onclick="resizeCanvas(1500, 2000)" class="w-full text-left px-3 py-2 bg-[#3a3a3a] hover:bg-[#4a4a4a] rounded text-xs">Verticale Large (1500x2000)</button>
-                        <button onclick="resizeCanvas(2000, 2000)" class="w-full text-left px-3 py-2 bg-[#3a3a3a] hover:bg-[#4a4a4a] rounded text-xs">Verticale Très Large (2000x2000)</button>
-                    </div>
-                </div>
-
-                <!-- Divers -->
-                <div>
-                    <h3 class="text-[#00aaff] font-bold mb-2 text-sm">Divers</h3>
-                    <div class="space-y-1">
-                        <button onclick="resizeCanvas(1000, 1000)" class="w-full text-left px-3 py-2 bg-[#3a3a3a] hover:bg-[#4a4a4a] rounded text-xs">Basique (1000x1000)</button>
-                        <button onclick="resizeCanvas(512, 512)" class="w-full text-left px-3 py-2 bg-[#3a3a3a] hover:bg-[#4a4a4a] rounded text-xs">Icône (512x512)</button>
-                        <button onclick="resizeCanvas(500, 500)" class="w-full text-left px-3 py-2 bg-[#3a3a3a] hover:bg-[#4a4a4a] rounded text-xs">Logo (500x500)</button>
-                        <button onclick="resizeCanvas(2000, 2000)" class="w-full text-left px-3 py-2 bg-[#3a3a3a] hover:bg-[#4a4a4a] rounded text-xs">Carré HD (2000x2000)</button>
-                        <button onclick="resizeCanvas(5000, 5000)" class="w-full text-left px-3 py-2 bg-[#3a3a3a] hover:bg-[#4a4a4a] rounded text-xs">Carré Ultra (5000x5000)</button>
-                    </div>
-                </div>
-
-                <!-- Grands Formats -->
-                <div>
-                    <h3 class="text-[#00aaff] font-bold mb-2 text-sm">Grands Formats</h3>
-                    <div class="space-y-1">
-                        <button onclick="resizeCanvas(3500, 2000)" class="w-full text-left px-3 py-2 bg-[#3a3a3a] hover:bg-[#4a4a4a] rounded text-xs">Large (3500x2000)</button>
-                        <button onclick="resizeCanvas(2500, 4500)" class="w-full text-left px-3 py-2 bg-[#3a3a3a] hover:bg-[#4a4a4a] rounded text-xs">Vertical (2500x4500)</button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Sur Mesure -->
-            <div class="border-t border-[#555] pt-4 mt-2">
-                <h3 class="text-[#00aaff] font-bold mb-2 text-sm">Format Sur Mesure</h3>
-                <div class="flex space-x-2 items-end">
-                    <div class="flex-1">
-                        <label class="block text-xs mb-1">Largeur (px)</label>
-                        <input type="number" id="customWidth" placeholder="ex: 1920" class="w-full bg-[#1e1e1e] border border-[#555] rounded px-2 py-1 text-sm">
-                    </div>
-                    <div class="flex-1">
-                        <label class="block text-xs mb-1">Hauteur (px)</label>
-                        <input type="number" id="customHeight" placeholder="ex: 1080" class="w-full bg-[#1e1e1e] border border-[#555] rounded px-2 py-1 text-sm">
-                    </div>
-                    <button onclick="applyCustomResize()" class="bg-[#00aaff] hover:bg-[#0088cc] text-white px-4 py-1 rounded text-sm h-[30px]">
-                        Valider
-                    </button>
-                </div>
-            </div>
-        </div>
     </div>
 
     <!-- Second horizontal bar with icons and options -->
@@ -429,288 +254,111 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['fontUpload'])) {
         <div id="toolsSection" class="p-3 bg-[#252525] border-b border-[#555]">
           <h2 class="text-lg font-semibold mb-2">Tools</h2>
           <select id="toolSelect" class="w-full bg-[#1e1e1e] border border-[#555] rounded px-2 py-1 mb-3 text-[#c0c0c0]">
+            <!-- OUTILS DE DESSIN BASIQUES -->
             <option value="brush-basic">Feutre Basique</option>
-            <option value="mode-shapes">Formes</option>
-            <option value="mode-text">Textes</option>
-            <option value="select">Sélection</option>
-            <option value="eraser">Gomme</option>
-          </select>
-
-          <!-- Container pour les formes spécifiques (visible uniquement si "Formes" est sélectionné) -->
-          <div id="shapeToolsContainer" class="hidden mb-3">
-            <label class="block mb-1 text-sm">Choisir une forme</label>
-            <select id="subShapeSelect" class="w-full bg-[#1e1e1e] border border-[#555] rounded px-2 py-1 text-[#c0c0c0]">
-                <option value="shape-img" class="font-bold text-[#00aaff]">★ Formes Img (Images)</option>
-                <!-- FORMES DE BASE EXISTANTES -->
-                <option value="shape-rectangle">Rectangle</option>
-                <option value="shape-circle">Cercle</option>
-                <option value="shape-triangle">Triangle</option>
-                <option value="shape-line">Ligne</option>
-                <!-- NOUVELLES FORMES PHASE 2 -->
-                <option value="shape-point">Point</option>
-                <option value="shape-ellipse">Ellipse</option>
-                <option value="shape-diamond">Losange</option>
-                <option value="shape-pentagon">Pentagone</option>
-                <option value="shape-hexagon">Hexagone</option>
-                <option value="shape-octagon">Octogone</option>
-                <option value="shape-star5">Étoile 5 branches</option>
-                <option value="shape-star6">Étoile 6 branches</option>
-                <option value="shape-star8">Étoile 8 branches</option>
-                <option value="shape-heart">Cœur</option>
-                <option value="shape-arrow">Flèche</option>
-                <option value="shape-cloud">Nuage</option>
-                <!-- 5 NOUVELLES FORMES SUPPLÉMENTAIRES -->
-                <option value="shape-crescent">Croissant de Lune</option>
-                <option value="shape-droplet">Goutte d'eau</option>
-                <option value="shape-trapezoid">Trapèze</option>
-                <option value="shape-parallelogram">Parallélogramme</option>
-                <option value="shape-cross">Croix</option>
-                <!-- 20 NOUVELLES FORMES SUPPLÉMENTAIRES -->
-                <option value="shape-heptagon">Heptagone (7 côtés)</option>
-                <option value="shape-nonagon">Nonagone (9 côtés)</option>
-                <option value="shape-decagon">Décagone (10 côtés)</option>
-                <option value="shape-dodecagon">Dodécagone (12 côtés)</option>
-                <option value="shape-star3">Étoile 3 branches</option>
-                <option value="shape-star4">Étoile 4 branches</option>
-                <option value="shape-star7">Étoile 7 branches</option>
-                <option value="shape-star10">Étoile 10 branches</option>
-                <option value="shape-spiral">Spirale</option>
-                <option value="shape-gear">Engrenage</option>
-                <option value="shape-lightning">Éclair</option>
-                <option value="shape-leaf">Feuille</option>
-                <option value="shape-flower">Fleur</option>
-                <option value="shape-sun">Soleil</option>
-                <option value="shape-moon">Lune pleine</option>
-                <option value="shape-infinity">Infini (∞)</option>
-                <option value="shape-bubble">Bulle</option>
-                <option value="shape-crown">Couronne</option>
-                <option value="shape-gem">Diamant/Gemme</option>
-                <option value="shape-shield">Bouclier</option>
-                <option value="shape-eye">Œil</option>
-                <option value="shape-butterfly">Papillon</option>
-                
-                <!-- NOUVELLES FORMES AJOUTÉES -->
-                <option value="shape-right-triangle">Triangle rectangle</option>
-                <option value="shape-obtuse-triangle">Triangle obtus</option>
-                <option value="shape-equilateral">Triangle équilatéral</option>
-
-                <option value="shape-arc">Arc</option>
-                <option value="shape-semicircle">Demi-cercle</option>
-                <option value="shape-quarter-circle">Quart de cercle</option>
-                <option value="shape-ring">Anneau</option>
-
-                <option value="shape-star12">Étoile 12 branches</option>
-                <option value="shape-star16">Étoile 16 branches</option>
-                <option value="shape-starburst">Étoile explosive</option>
-
-                <option value="shape-bean">Fève / haricot</option>
-                <option value="shape-pill">Pilule / capsule</option>
-                <option value="shape-stadium">Stade (rectangle arrondi)</option>
-
-                <option value="shape-ellipse-vertical">Ellipse verticale</option>
-                <option value="shape-ellipse-horizontal">Ellipse horizontale</option>
-
-                <option value="shape-wave">Vague</option>
-                <option value="shape-zigzag">Zigzag</option>
-                <option value="shape-sine">Onde sinusoïdale</option>
-
-                <option value="shape-trefoil">Trèfle à 3 feuilles</option>
-                <option value="shape-quatrefoil">Trèfle à 4 feuilles</option>
-
-                <option value="shape-bracket-left">Crochet gauche</option>
-                <option value="shape-bracket-right">Crochet droit</option>
-                <option value="shape-brace-left">Accolade gauche</option>
-                <option value="shape-brace-right">Accolade droite</option>
-
-                <option value="shape-chevron-up">Chevron haut</option>
-                <option value="shape-chevron-down">Chevron bas</option>
-                <option value="shape-chevron-left">Chevron gauche</option>
-                <option value="shape-chevron-right">Chevron droite</option>
-
-                <option value="shape-triangle-up">Triangle haut</option>
-                <option value="shape-triangle-down">Triangle bas</option>
-                <option value="shape-triangle-left">Triangle gauche</option>
-                <option value="shape-triangle-right">Triangle droite</option>
-
-                <option value="shape-mountain">Montagne</option>
-                <option value="shape-hill">Colline</option>
-                <option value="shape-tree">Arbre</option>
-
-                <option value="shape-fish">Poisson</option>
-                <option value="shape-bird">Oiseau</option>
-                <option value="shape-cat">Chat</option>
-                <option value="shape-dog">Chien</option>
-
-                <option value="shape-starfish">Étoile de mer</option>
-                <option value="shape-shell">Coquillage</option>
-
-                <option value="shape-apple">Pomme</option>
-                <option value="shape-cherry">Cerise</option>
-                <option value="shape-banana">Banane</option>
-
-                <option value="shape-car">Voiture</option>
-                <option value="shape-plane">Avion</option>
-                <option value="shape-rocket">Fusée</option>
-                <option value="shape-boat">Bateau</option>
-
-                <option value="shape-house">Maison</option>
-                <option value="shape-building">Building</option>
-                <option value="shape-door">Porte</option>
-                <option value="shape-window">Fenêtre</option>
-
-                <option value="shape-phone">Téléphone</option>
-                <option value="shape-laptop">Laptop</option>
-                <option value="shape-tv">Télévision</option>
-
-                <option value="shape-folder">Dossier</option>
-                <option value="shape-file">Fichier</option>
-                <option value="shape-trash">Poubelle</option>
-
-                <option value="shape-lock">Cadenas</option>
-                <option value="shape-key">Clé</option>
-
-                <option value="shape-map-pin">Pin map</option>
-                <option value="shape-location">Localisation</option>
-
-                <option value="shape-play">Play ▶</option>
-                <option value="shape-pause">Pause ⏸</option>
-                <option value="shape-stop">Stop ⏹</option>
-                <option value="shape-record">Record ⏺</option>
-                <option value="shape-volume">Volume 🔊</option>
-
-                <option value="shape-check">Check ✔</option>
-                <option value="shape-crossmark">Croix ✖</option>
-                <option value="shape-question">Point d'interrogation ?</option>
-                <option value="shape-exclamation">Point d’exclamation !</option>
-
-                <option value="shape-speech-bubble">Bulle de discussion</option>
-                <option value="shape-quote">Guillemets “ ”</option>
-
-                <option value="shape-hourglass">Sablier</option>
-                <option value="shape-loading">Loading (cercle segmenté)</option>
-
-                <option value="shape-target">Cible 🎯</option>
-                <option value="shape-scope">Viseur</option>
-
-                <option value="shape-compass">Boussole</option>
-                <option value="shape-anchor">Ancre ⚓</option>
-
-                <option value="shape-puzzle">Pièce de puzzle</option>
-                <option value="shape-jigsaw">Contour de puzzle</option>
-
-                <option value="shape-honeycomb">Cellule d’abeille</option>
-                <option value="shape-lattice">Grille diagonale</option>
-
-                <option value="shape-dna">Spirale ADN</option>
-                <option value="shape-molecule">Molécule</option>
-
-                <option value="shape-snowflake">Flocon de neige</option>
-                <option value="shape-fire">Flamme 🔥</option>
-                <option value="shape-water-splash">Éclaboussure</option>
-
-                <option value="shape-balloon">Ballon gonflé 🎈</option>
-                <option value="shape-flag">Drapeau</option>
-
-                <option value="shape-medal">Médaille</option>
-                <option value="shape-trophy">Trophée</option>
-
-                <option value="shape-book">Livre</option>
-                <option value="shape-scroll">Parchemin</option>
-
-                <option value="shape-music-note">Note de musique</option>
-                <option value="shape-music-double">Double note</option>
-
-                <option value="shape-eye-closed">Œil fermé</option>
-
-                <option value="shape-bolt-nut">Écrou hexagonal</option>
-                <option value="shape-screwdriver">Tournevis</option>
-
-                <option value="shape-cube">Cube (vue 3D)</option>
-                <option value="shape-pyramid">Pyramide (vue 3D)</option>
-                <option value="shape-cylinder">Cylindre (vue 3D)</option>
-
-                <option value="shape-fractal-tree">Arbre fractal</option>
-                <option value="shape-radial-burst">Explosion radiale</option>
-                <option value="shape-splat">Tache / éclat</option>
-                
-                <!-- 5 NOUVELLES FORMES (ROUGE) -->
-                <option value="shape-spiral-galaxy" style="color: #ff4444; font-weight: bold;">Galaxie Spirale</option>
-                <option value="shape-tornado" style="color: #ff4444; font-weight: bold;">Tornade</option>
-                <option value="shape-dna-helix" style="color: #ff4444; font-weight: bold;">Hélice ADN</option>
-                <option value="shape-atom" style="color: #ff4444; font-weight: bold;">Atome</option>
-                <option value="shape-sacred-geo" style="color: #ff4444; font-weight: bold;">Géométrie Sacrée</option>
-
-                <!-- OPTION FORMES IMG -->
-                <option value="shape-img">Formes IMG (Images)</option>
-            </select>
-
-            <!-- UI FORMES IMG -->
-            <div id="formeImgContainer" class="hidden mt-2 p-2 bg-[#2d2d2d] rounded border border-[#555]">
-                <label class="block mb-1 text-xs font-bold">Bibliothèque Formes IMG</label>
-                <div id="formeImgList" class="grid grid-cols-4 gap-1 mb-2 max-h-[150px] overflow-y-auto border border-[#444] p-1 min-h-[50px]">
-                    <!-- Images chargées via JS -->
-                </div>
-                <label class="cursor-pointer bg-[#444] hover:bg-[#555] text-xs px-2 py-1 rounded block text-center transition" title="Seuls les PNG conservent la transparence">
-                    <i class="fas fa-plus"></i> Ajouter des formes img
-                    <input type="file" id="formeImgInput" accept="image/png,image/jpeg,image/webp" class="hidden">
-                </label>
-            </div>
-
-            <!-- UI OPTIONS DE STYLE DE FORME -->
-            <div id="shapeStyleOptionsContainer" class="hidden mt-2 p-2 bg-[#252525] rounded border border-[#555]">
-                <!-- Options dynamiques injectées ici -->
-            </div>
-          </div>
-          
-          <!-- Style d'image global avancé -->
-          <div id="imageStylePanel" class="hidden p-3 bg-[#252525] border-b border-[#555]">
-            <h3 class="text-sm font-semibold mb-2 text-[#00aaff]">Paramètres Image</h3>
+            <option value="brush-pencil">Crayon</option>
+            <option value="brush-smoke">Fumée</option>
+            <option value="brush-chalk">Craie</option>
+            <option value="brush-brush">Pinceau</option>
             
-            <div class="space-y-2">
-              <div>
-                <label class="block mb-1 text-xs">Luminosité: <span id="imgBrightnessVal">100</span>%</label>
-                <input type="range" id="imgBrightness" min="0" max="200" value="100" class="w-full" oninput="document.getElementById('imgBrightnessVal').textContent=this.value; updateSelectedImageStyle();">
-              </div>
-              <div>
-                <label class="block mb-1 text-xs">Contraste: <span id="imgContrastVal">100</span>%</label>
-                <input type="range" id="imgContrast" min="0" max="200" value="100" class="w-full" oninput="document.getElementById('imgContrastVal').textContent=this.value; updateSelectedImageStyle();">
-              </div>
-              <div>
-                <label class="block mb-1 text-xs">Saturation: <span id="imgSaturateVal">100</span>%</label>
-                <input type="range" id="imgSaturate" min="0" max="200" value="100" class="w-full" oninput="document.getElementById('imgSaturateVal').textContent=this.value; updateSelectedImageStyle();">
-              </div>
-              <div>
-                <label class="block mb-1 text-xs">Teinte (Hue): <span id="imgHueVal">0</span>deg</label>
-                <input type="range" id="imgHue" min="0" max="360" value="0" class="w-full" oninput="document.getElementById('imgHueVal').textContent=this.value; updateSelectedImageStyle();">
-              </div>
-              <div>
-                <label class="block mb-1 text-xs">Flou (Blur): <span id="imgBlurVal">0</span>px</label>
-                <input type="range" id="imgBlur" min="0" max="20" step="0.1" value="0" class="w-full" oninput="document.getElementById('imgBlurVal').textContent=this.value; updateSelectedImageStyle();">
-              </div>
-              <div>
-                <label class="block mb-1 text-xs">Sépia: <span id="imgSepiaVal">0</span>%</label>
-                <input type="range" id="imgSepia" min="0" max="100" value="0" class="w-full" oninput="document.getElementById('imgSepiaVal').textContent=this.value; updateSelectedImageStyle();">
-              </div>
-              <div>
-                <label class="block mb-1 text-xs">Gris (Grayscale): <span id="imgGrayscaleVal">0</span>%</label>
-                <input type="range" id="imgGrayscale" min="0" max="100" value="0" class="w-full" oninput="document.getElementById('imgGrayscaleVal').textContent=this.value; updateSelectedImageStyle();">
-              </div>
-              <div>
-                <label class="block mb-1 text-xs">Inversion: <span id="imgInvertVal">0</span>%</label>
-                <input type="range" id="imgInvert" min="0" max="100" value="0" class="w-full" oninput="document.getElementById('imgInvertVal').textContent=this.value; updateSelectedImageStyle();">
-              </div>
-              <div>
-                <label class="block mb-1 text-xs">Opacité: <span id="imgOpacityVal">100</span>%</label>
-                <input type="range" id="imgOpacity" min="0" max="100" value="100" class="w-full" oninput="document.getElementById('imgOpacityVal').textContent=this.value; updateSelectedImageStyle();">
-              </div>
-            </div>
-            <button onclick="resetImageStyles()" class="mt-3 w-full bg-[#444] hover:bg-[#555] text-white py-1 rounded text-xs">Réinitialiser</button>
-          </div>
+            <!-- NOUVEAUX OUTILS DE DESSIN PHASE 6 -->
+            <option value="brush-marker">Marqueur Épais</option>
+            <option value="brush-fineliner">Feutre Fin</option>
+            <option value="brush-fountain">Plume Fountain</option>
+            <option value="brush-ballpoint">Stylo Bille</option>
+            <option value="brush-charcoal">Fusain</option>
+            <option value="brush-pastel">Pastel Gras</option>
+            <option value="brush-watercolor">Aquarelle</option>
+            <option value="brush-acrylic">Acrylique</option>
+            <option value="brush-oil">Huile</option>
+            <option value="brush-tempera">Tempera</option>
+            <option value="brush-gouache">Gouache</option>
+            <option value="brush-spray">Aérosol</option>
+            <option value="brush-splatter">Éclaboussure</option>
+            <option value="brush-stipple">Pointillé</option>
+            <option value="brush-crosshatch">Hachure</option>
+            <option value="brush-scribble">Gribouillage</option>
+            <option value="brush-calligraphy">Calligraphie</option>
+            <option value="brush-texture">Texture</option>
+            <option value="brush-digital">Digital</option>
+            <option value="brush-glitch">Glitch</option>
+            <option value="brush-neon">Néon</option>
+            <option value="brush-laser">Laser</option>
+            <option value="brush-fire">Feu</option>
+            <option value="brush-lightning">Éclair</option>
+            <option value="brush-galaxy">Galaxie</option>
+            
+            <option value="eraser">Gomme</option>
+            
+            <!-- FORMES DE BASE EXISTANTES -->
+            <option value="shape-rectangle">Rectangle</option>
+            <option value="shape-circle">Cercle</option>
+            <option value="shape-triangle">Triangle</option>
+            <option value="shape-line">Ligne</option>
+            <!-- NOUVELLES FORMES PHASE 2 -->
+            <option value="shape-point">Point</option>
+            <option value="shape-ellipse">Ellipse</option>
+            <option value="shape-diamond">Losange</option>
+            <option value="shape-pentagon">Pentagone</option>
+            <option value="shape-hexagon">Hexagone</option>
+            <option value="shape-octagon">Octogone</option>
+            <option value="shape-star5">Étoile 5 branches</option>
+            <option value="shape-star6">Étoile 6 branches</option>
+            <option value="shape-star8">Étoile 8 branches</option>
+            <option value="shape-heart">Cœur</option>
+            <option value="shape-arrow">Flèche</option>
+            <option value="shape-cloud">Nuage</option>
+            <!-- 5 NOUVELLES FORMES SUPPLÉMENTAIRES -->
+            <option value="shape-crescent">Croissant de Lune</option>
+            <option value="shape-droplet">Goutte d'eau</option>
+            <option value="shape-trapezoid">Trapèze</option>
+            <option value="shape-parallelogram">Parallélogramme</option>
+            <option value="shape-cross">Croix</option>
+            <!-- 20 NOUVELLES FORMES SUPPLÉMENTAIRES -->
+            <option value="shape-heptagon">Heptagone (7 côtés)</option>
+            <option value="shape-nonagon">Nonagone (9 côtés)</option>
+            <option value="shape-decagon">Décagone (10 côtés)</option>
+            <option value="shape-dodecagon">Dodécagone (12 côtés)</option>
+            <option value="shape-star3">Étoile 3 branches</option>
+            <option value="shape-star4">Étoile 4 branches</option>
+            <option value="shape-star7">Étoile 7 branches</option>
+            <option value="shape-star10">Étoile 10 branches</option>
+            <option value="shape-spiral">Spirale</option>
+            <option value="shape-gear">Engrenage</option>
+            <option value="shape-lightning">Éclair</option>
+            <option value="shape-leaf">Feuille</option>
+            <option value="shape-flower">Fleur</option>
+            <option value="shape-sun">Soleil</option>
+            <option value="shape-moon">Lune pleine</option>
+            <option value="shape-infinity">Infini (∞)</option>
+            <option value="shape-bubble">Bulle</option>
+            <option value="shape-crown">Couronne</option>
+            <option value="shape-gem">Diamant/Gemme</option>
+            <option value="shape-shield">Bouclier</option>
+            <option value="shape-eye">Œil</option>
+            <option value="shape-butterfly">Papillon</option>
+            <option value="select">Sélection</option>
+            <option value="copy">Copier</option>
+            <option value="paste">Coller</option>
+            <option value="lasso-free">Lasso Libre</option>
+            <option value="lasso-polygon">Lasso Polygonal</option>
+            <option value="lasso-magnetic">Lasso Magnétique</option>
+          </select>
+          
+          <!-- Style d'image global simple -->
+          <label class="block mb-1 text-sm mt-2">Style image</label>
+          <select id="imageStyle" class="w-full bg-[#1e1e1e] border border-[#555] rounded px-2 py-1 mb-3 text-[#c0c0c0]">
+            <option value="normal">Normal</option>
+            <option value="grayscale">Noir & blanc</option>
+            <option value="sepia">Sépia</option>
+            <option value="contrast">Contraste +</option>
+            <option value="saturate">Saturé</option>
+          </select>
 
           <label for="brushSize" class="block mb-1 text-sm">Brush Size: <span id="brushSizeValue">10</span> px</label>
           <div class="flex items-center space-x-2 mb-3">
-            <input type="range" id="brushSize" min="0.001" max="2000" step="0.001" value="10" class="flex-1" />
-            <input type="number" id="brushSizeNumber" min="0.001" max="2000" step="0.001" value="10" class="w-20 bg-[#1e1e1e] border border-[#555] rounded px-1 py-0.5 text-xs text-right" />
+            <input type="range" id="brushSize" min="0.001" max="1000" step="0.001" value="10" class="flex-1" />
+            <input type="number" id="brushSizeNumber" min="0.001" max="1000" step="0.001" value="10" class="w-20 bg-[#1e1e1e] border border-[#555] rounded px-1 py-0.5 text-xs text-right" />
           </div>
 
           <!-- Options Formes -->
@@ -743,27 +391,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['fontUpload'])) {
               <input type="range" id="shapeRotation" min="0" max="360" step="0.1" value="0" class="w-full" />
             </div>
 
-            <!-- 3D Revel Effect -->
-            <div class="mt-2 border-t border-[#555] pt-2">
-                <label class="flex items-center text-xs mb-2 font-bold text-[#ff00ff] cursor-pointer">
-                    <input type="checkbox" id="shapeRevelActive" class="mr-2" onchange="document.getElementById('shapeRevelOptions').classList.toggle('hidden', !this.checked); if(window.updateSelectedShape) window.updateSelectedShape();" />
-                    <span>3D Revel Effect</span>
-                </label>
-                <div id="shapeRevelOptions" class="hidden space-y-2 pl-2 border-l border-[#444]">
-                    <div>
-                        <label class="block text-xs mb-1">Intensité</label>
-                        <div class="grid grid-cols-6 gap-1 text-[10px]">
-                            <label class="cursor-pointer"><input type="radio" name="shapeRevelIntensity" value="10" checked onchange="if(window.updateSelectedShape) window.updateSelectedShape()"> 10</label>
-                            <label class="cursor-pointer"><input type="radio" name="shapeRevelIntensity" value="20" onchange="if(window.updateSelectedShape) window.updateSelectedShape()"> 20</label>
-                            <label class="cursor-pointer"><input type="radio" name="shapeRevelIntensity" value="40" onchange="if(window.updateSelectedShape) window.updateSelectedShape()"> 40</label>
-                            <label class="cursor-pointer"><input type="radio" name="shapeRevelIntensity" value="60" onchange="if(window.updateSelectedShape) window.updateSelectedShape()"> 60</label>
-                            <label class="cursor-pointer"><input type="radio" name="shapeRevelIntensity" value="80" onchange="if(window.updateSelectedShape) window.updateSelectedShape()"> 80</label>
-                            <label class="cursor-pointer"><input type="radio" name="shapeRevelIntensity" value="100" onchange="if(window.updateSelectedShape) window.updateSelectedShape()"> 100</label>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
               <!-- Style de forme -->
               <div class="mb-2">
                 <label for="shapeStyle" class="block mb-1 text-xs">Style de forme</label>
@@ -788,18 +415,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['fontUpload'])) {
                   <option value="glass-gradient">Verre dégradé</option>
                   <option value="emboss">Relief (emboss)</option>
                   <option value="cutout">Découpe</option>
-                  <!-- NOUVEAUX STYLES -->
-                  <option value="neon-advanced">Néon Avancé</option>
-                  <option value="crayon-style">Crayon de couleur</option>
-                  <option value="glitch-style">Glitch Art</option>
-                  <option value="3d-block">Bloc 3D</option>
-                  <option value="pointillism">Pointillisme</option>
                 </select>
-              </div>
-              
-              <!-- CONTENEUR OPTIONS DYNAMIQUES STYLES -->
-              <div id="shapeStyleOptionsContainer" class="hidden mt-2 p-2 bg-[#222] border border-[#444] rounded">
-                  <!-- Injecté via JS -->
               </div>
           </div>
 
@@ -878,7 +494,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['fontUpload'])) {
           <input type="range" id="opacity" min="0" max="1" step="0.01" value="1" class="w-full mb-3" />
 
           <!-- STYLES ARTISTIQUES AMÉLIORÉS PHASE 6 -->
-          <div id="artisticStylesPanel" class="p-3 bg-[#252525] border-b border-[#555] hidden">
+          <div class="p-3 bg-[#252525] border-b border-[#555]">
             <h2 class="text-lg font-semibold mb-2 text-[#00aaff]">🎨 Styles Artistiques</h2>
             
             <label class="block mb-1 text-sm">Style de pinceau</label>
@@ -1097,8 +713,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['fontUpload'])) {
               </select>
             </div>
           </div>
-
-          <!-- PHASE 6 supprimée -->
           
           <!-- Contrôles spécifiques aux Lassos -->
           <div id="lassoControls" class="hidden mb-3">
@@ -1344,409 +958,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['fontUpload'])) {
     window.canvas = document.getElementById('drawingCanvas');
   }
   if (!window.ctx && window.canvas) {
-    window.ctx = window.canvas.getContext('2d', { willReadFrequently: true });
-  }
-
-  // Valeurs par défaut sûres pour éviter ReferenceError
-  if (typeof window.currentTool === 'undefined') window.currentTool = 'brush-basic';
-  if (typeof window.zoomLevel === 'undefined') window.zoomLevel = 1;
-  if (typeof window.canvasOffset === 'undefined') window.canvasOffset = { x: 0, y: 0 };
-
-  // Helper pour convertir les coordonnées pointeur -> coordonnées canevas en tenant compte du zoom/pan
-  if (typeof window.getScaledPointerPos === 'undefined') {
-    window.getScaledPointerPos = function (e) {
-      const c = window.canvas || document.getElementById('drawingCanvas');
-      const rect = c.getBoundingClientRect();
-      const x = (e.clientX - rect.left - (window.canvasOffset?.x || 0)) / (window.zoomLevel || 1);
-      const y = (e.clientY - rect.top - (window.canvasOffset?.y || 0)) / (window.zoomLevel || 1);
-      return { x, y };
-    };
-  }
-
-  // État de drag global sécurisé
-  if (typeof window.isDragging === 'undefined') window.isDragging = false;
-  if (typeof window.isRotating === 'undefined') window.isRotating = false;
-  if (typeof window.isResizing === 'undefined') window.isResizing = false;
-  if (typeof window.dragOffset === 'undefined') window.dragOffset = { x: 0, y: 0 };
-  if (typeof window.elementResizeHandle === 'undefined') window.elementResizeHandle = null;
-
-  // Sécuriser les handlers pointer si le projet les a déjà
-  const canvasEl = window.canvas || document.getElementById('drawingCanvas');
-  if (canvasEl) {
-    if (!canvasEl.onpointerdown) {
-      canvasEl.onpointerdown = function(e){ window.isDragging = true; };
-    }
-    if (!canvasEl.onpointerup) {
-      canvasEl.onpointerup = function(e){ window.isDragging = false; };
-    }
-    if (!canvasEl.onpointerleave) {
-      canvasEl.onpointerleave = function(e){ window.isDragging = false; };
-    }
-  }
-
-  // ==== Throttle redrawAll avec requestAnimationFrame pour fluidité ====
-  if (typeof window.__framePending === 'undefined') window.__framePending = false;
-  if (typeof window.__rawRedraw === 'undefined' && typeof window.redrawAll === 'function') {
-    window.__rawRedraw = window.redrawAll;
-    window.redrawAll = function(){
-      if (window.__framePending) return;
-      window.__framePending = true;
-      requestAnimationFrame(() => {
-        try { window.__rawRedraw && window.__rawRedraw(); }
-        finally { window.__framePending = false; }
-      });
-    };
-  }
-
-  // ==== Aperçu de peinture 1px précis et sans dilution ====
-  if (typeof window.paintPreview === 'undefined') {
-    window.paintPreview = function(x, y) {
-      const bs = parseFloat(document.getElementById('brushSize')?.value || '1');
-      const modeEl = document.getElementById('colorMode');
-      const c1 = document.getElementById('color1')?.value || '#ff0000';
-      const p = snapToPixel(x, y);
-      ctx.save();
-      enablePrecisePixelModeIfNeeded();
-      if (bs <= 1.0) {
-        ctx.fillStyle = c1;
-        ctx.fillRect(p.x, p.y, 1, 1);
-      } else {
-        ctx.lineWidth = bs;
-        ctx.lineCap = 'round';
-        ctx.strokeStyle = c1;
-        ctx.beginPath();
-        ctx.moveTo(p.x, p.y);
-        ctx.lineTo(p.x + 0.01, p.y + 0.01);
-        ctx.stroke();
-      }
-      ctx.restore();
-    };
-  }
-
-  // ==== Style global des formes (fill/stroke/effets) ====
-  // Rendre disponible avant renderShapePreview/commitShape pour éviter ReferenceError
-  if (typeof window.applyShapeStyleToPath === 'undefined') {
-    window.applyShapeStyleToPath = function(ctx, shapeStyle, finalColor, s) {
-      const strokeWidth = s.outlineThickness || parseFloat(document.getElementById('outlineThickness')?.value || '1') || 1;
-      const baseOpacity = ctx.globalAlpha;
-
-      switch (shapeStyle) {
-        case 'flat-stroke':
-          ctx.fillStyle = 'transparent';
-          ctx.strokeStyle = finalColor;
-          ctx.lineWidth = strokeWidth;
-          ctx.stroke();
-          break;
-
-        case 'double-stroke':
-          ctx.strokeStyle = finalColor;
-          ctx.lineWidth = strokeWidth * 2;
-          ctx.stroke();
-          ctx.lineWidth = Math.max(1, strokeWidth * 0.5);
-          ctx.globalAlpha = baseOpacity * 0.7;
-          ctx.stroke();
-          ctx.globalAlpha = baseOpacity;
-          break;
-
-        case 'soft-shadow':
-          ctx.save();
-          ctx.shadowColor = 'rgba(0,0,0,0.4)';
-          ctx.shadowBlur = 10;
-          ctx.shadowOffsetX = 4;
-          ctx.shadowOffsetY = 4;
-          ctx.fillStyle = activeFillStyle;
-          ctx.fill();
-          ctx.restore();
-          break;
-
-        case 'inner-shadow':
-          ctx.save();
-          ctx.clip();
-          ctx.globalAlpha = baseOpacity * 0.6;
-          ctx.fillStyle = 'rgba(0,0,0,0.4)';
-          ctx.fillRect(s.x + 3, s.y + 3, s.w - 6, s.h - 6);
-          ctx.restore();
-          ctx.fillStyle = activeFillStyle;
-          ctx.globalAlpha = baseOpacity;
-          ctx.fill();
-          break;
-
-        case 'glow':
-          ctx.save();
-          ctx.shadowColor = finalColor;
-          ctx.shadowBlur = 15;
-          ctx.fillStyle = activeFillStyle;
-          ctx.fill();
-          ctx.restore();
-          break;
-
-        case 'glass':
-          ctx.save();
-          ctx.fillStyle = 'rgba(255,255,255,0.25)';
-          ctx.fill();
-          ctx.globalAlpha = baseOpacity * 0.8;
-          ctx.strokeStyle = finalColor;
-          ctx.lineWidth = strokeWidth;
-          ctx.stroke();
-          ctx.restore();
-          break;
-
-        case 'metal':
-          ctx.save();
-          const grad = ctx.createLinearGradient(s.x, s.y, s.x + s.w, s.y + s.h);
-          grad.addColorStop(0, adjustColorBrightness(finalColor, -30));
-          grad.addColorStop(0.5, adjustColorBrightness(finalColor, 20));
-          grad.addColorStop(1, adjustColorBrightness(finalColor, -30));
-          ctx.fillStyle = grad;
-          ctx.fill();
-          ctx.restore();
-          break;
-
-        case 'neon':
-          ctx.save();
-          ctx.shadowColor = finalColor;
-          ctx.shadowBlur = 20;
-          ctx.strokeStyle = finalColor;
-          ctx.lineWidth = strokeWidth * 1.5;
-          ctx.stroke();
-          ctx.restore();
-          break;
-
-        case 'pastel':
-          ctx.fillStyle = adjustColorBrightness(finalColor, 20);
-          ctx.globalAlpha = baseOpacity * 0.8;
-          ctx.fill();
-          ctx.globalAlpha = baseOpacity;
-          break;
-
-        case 'ink':
-          ctx.strokeStyle = finalColor;
-          ctx.lineWidth = strokeWidth * 1.2;
-          ctx.globalAlpha = baseOpacity;
-          ctx.stroke();
-          break;
-
-        case 'marker':
-          ctx.fillStyle = finalColor;
-          ctx.globalAlpha = baseOpacity * 0.85;
-          ctx.fill();
-          ctx.globalAlpha = baseOpacity;
-          break;
-
-        case 'pixel':
-          ctx.imageSmoothingEnabled = false;
-          ctx.fillStyle = finalColor;
-          ctx.fill();
-          break;
-
-        case 'wireframe':
-          ctx.strokeStyle = finalColor;
-          ctx.lineWidth = strokeWidth * 0.8;
-          ctx.setLineDash([4, 4]);
-          ctx.stroke();
-          ctx.setLineDash([]);
-          break;
-
-        case 'dashed':
-          ctx.strokeStyle = finalColor;
-          ctx.lineWidth = strokeWidth;
-          ctx.setLineDash([6, 6]);
-          ctx.stroke();
-          ctx.setLineDash([]);
-          break;
-
-        case 'dotted':
-          ctx.strokeStyle = finalColor;
-          ctx.lineWidth = strokeWidth;
-          ctx.setLineDash([2, 6]);
-          ctx.stroke();
-          ctx.setLineDash([]);
-          break;
-
-        case 'soft-gradient':
-          ctx.save();
-          const g1 = ctx.createLinearGradient(s.x, s.y, s.x + s.w, s.y + s.h);
-          g1.addColorStop(0, adjustColorBrightness(finalColor, 10));
-          g1.addColorStop(1, adjustColorBrightness(finalColor, -10));
-          ctx.fillStyle = g1;
-          ctx.fill();
-          ctx.restore();
-          break;
-
-        case 'glass-gradient':
-          ctx.save();
-          const g2 = ctx.createLinearGradient(s.x, s.y, s.x, s.y + s.h);
-          g2.addColorStop(0, 'rgba(255,255,255,0.5)');
-          g2.addColorStop(0.5, finalColor);
-          g2.addColorStop(1, 'rgba(0,0,0,0.4)');
-          ctx.fillStyle = g2;
-          ctx.fill();
-          ctx.restore();
-          break;
-
-        case 'emboss':
-          ctx.save();
-          ctx.fillStyle = finalColor;
-          ctx.fill();
-          ctx.globalAlpha = baseOpacity * 0.6;
-          ctx.strokeStyle = 'rgba(255,255,255,0.6)';
-          ctx.translate(-1, -1);
-          ctx.stroke();
-          ctx.strokeStyle = 'rgba(0,0,0,0.6)';
-          ctx.translate(2, 2);
-          ctx.stroke();
-          ctx.restore();
-          break;
-
-        case 'cutout':
-          ctx.save();
-          ctx.fillStyle = adjustColorBrightness(finalColor, -20);
-          ctx.fill();
-          ctx.globalAlpha = baseOpacity * 0.6;
-          ctx.strokeStyle = 'rgba(0,0,0,0.6)';
-          ctx.stroke();
-          ctx.restore();
-          break;
-
-        case 'flat-fill':
-        default:
-          ctx.fillStyle = finalColor;
-          ctx.fill();
-          break;
-      }
-    };
-  }
-
-  // ==== Aperçu forme en temps réel avec style appliqué immédiatement ====
-  if (typeof window.renderShapePreview === 'undefined') {
-    window.renderShapePreview = function(s) {
-      window.__rawRedraw ? window.__rawRedraw() : (window.redrawAll && window.redrawAll());
-      ctx.save();
-      const shapeStyle = document.getElementById('shapeStyle')?.value || 'flat-fill';
-      const color = document.getElementById('color1')?.value || '#ff0000';
-      const opacityEl = document.getElementById('opacity');
-      if (opacityEl) ctx.globalAlpha = parseFloat(opacityEl.value || '1');
-      ctx.beginPath();
-      const tool = window.currentTool || 'shape-rectangle';
-      // Construire path selon outil
-      if (tool === 'shape-rectangle' || tool === 'shape-square') {
-        // carré : contraindre w/h égaux
-        if (tool === 'shape-square') { const size = Math.max(Math.abs(s.w), Math.abs(s.h)); s.w = (s.w<0?-size:size); s.h = (s.h<0?-size:size); }
-        ctx.rect(s.x, s.y, s.w, s.h);
-      } else if (tool === 'shape-line' || tool === 'shape-trait') {
-        ctx.moveTo(s.x, s.y);
-        ctx.lineTo(s.x + s.w, s.y + s.h);
-      } else if (tool === 'shape-point') {
-        const pSize = 1;
-        ctx.rect(Math.round(s.x), Math.round(s.y), pSize, pSize);
-      } else if (tool === 'shape-circle') {
-        const rx = s.w; const ry = s.h;
-        const r = Math.hypot(rx, ry) / 2;
-        const cx = s.x + rx/2; const cy = s.y + ry/2;
-        ctx.arc(cx, cy, Math.abs(r), 0, Math.PI*2);
-      } else if (tool === 'shape-ellipse') {
-        const cx = s.x + s.w/2; const cy = s.y + s.h/2;
-        ctx.ellipse(cx, cy, Math.abs(s.w/2), Math.abs(s.h/2), 0, 0, Math.PI*2);
-      } else if (tool === 'shape-triangle') {
-        ctx.moveTo(s.x + s.w/2, s.y);
-        ctx.lineTo(s.x, s.y + s.h);
-        ctx.lineTo(s.x + s.w, s.y + s.h);
-        ctx.closePath();
-      } else if (tool === 'shape-diamond' || tool === 'shape-losange') {
-        ctx.moveTo(s.x + s.w/2, s.y);
-        ctx.lineTo(s.x + s.w, s.y + s.h/2);
-        ctx.lineTo(s.x + s.w/2, s.y + s.h);
-        ctx.lineTo(s.x, s.y + s.h/2);
-        ctx.closePath();
-      } else {
-        // Fallback: rectangle
-        ctx.rect(s.x, s.y, s.w, s.h);
-      }
-      if (typeof applyShapeStyleToPath === 'function') {
-        applyShapeStyleToPath(ctx, shapeStyle, color, s);
-      } else {
-        if (tool === 'shape-line' || tool === 'shape-trait') {
-          ctx.strokeStyle = color;
-          ctx.lineWidth = parseFloat(document.getElementById('outlineThickness')?.value || '1');
-          ctx.stroke();
-        } else {
-          ctx.fillStyle = color;
-          ctx.fill();
-        }
-      }
-      ctx.restore();
-    };
-  }
-
-  // Système minimal de finalisation de formes
-  if (typeof window.shapesElements === 'undefined') window.shapesElements = [];
-  if (typeof window.commitShape === 'undefined') {
-    window.commitShape = function(s) {
-      const tool = window.currentTool || 'shape-rectangle';
-      const entry = { tool, s: { x: s.x, y: s.y, w: s.w, h: s.h }, style: document.getElementById('shapeStyle')?.value || 'flat-fill', color: document.getElementById('color1')?.value || '#ff0000', opacity: parseFloat(document.getElementById('opacity')?.value || '1') };
-      window.shapesElements.push(entry);
-      // Redessiner avec ajout de la forme
-      if (!window.__rawRedraw && typeof window.redrawAll === 'function') {
-        window.redrawAll();
-      } else if (window.__rawRedraw) {
-        window.__rawRedraw();
-      }
-      // Dessiner la forme ajoutée
-      ctx.save();
-      ctx.globalAlpha = entry.opacity;
-      const s2 = entry.s; ctx.beginPath();
-      const t = entry.tool;
-      if (t === 'shape-rectangle' || t === 'shape-square') {
-        if (t === 'shape-square') { const size = Math.max(Math.abs(s2.w), Math.abs(s2.h)); s2.w = (s2.w<0?-size:size); s2.h = (s2.h<0?-size:size); }
-        ctx.rect(s2.x, s2.y, s2.w, s2.h);
-      } else if (t === 'shape-line' || t === 'shape-trait') {
-        ctx.moveTo(s2.x, s2.y);
-        ctx.lineTo(s2.x + s2.w, s2.y + s2.h);
-      } else if (t === 'shape-point') {
-        ctx.rect(Math.round(s2.x), Math.round(s2.y), 1, 1);
-      } else if (t === 'shape-circle') {
-        const r = Math.hypot(s2.w, s2.h)/2; const cx = s2.x + s2.w/2; const cy = s2.y + s2.h/2;
-        ctx.arc(cx, cy, Math.abs(r), 0, Math.PI*2);
-      } else if (t === 'shape-ellipse') {
-        const cx = s2.x + s2.w/2; const cy = s2.y + s2.h/2;
-        ctx.ellipse(cx, cy, Math.abs(s2.w/2), Math.abs(s2.h/2), 0, 0, Math.PI*2);
-      } else if (t === 'shape-triangle') {
-        ctx.moveTo(s2.x + s2.w/2, s2.y);
-        ctx.lineTo(s2.x, s2.y + s2.h);
-        ctx.lineTo(s2.x + s2.w, s2.y + s2.h);
-        ctx.closePath();
-      } else if (t === 'shape-diamond' || t === 'shape-losange') {
-        ctx.moveTo(s2.x + s2.w/2, s2.y);
-        ctx.lineTo(s2.x + s2.w, s2.y + s2.h/2);
-        ctx.lineTo(s2.x + s2.w/2, s2.y + s2.h);
-        ctx.lineTo(s2.x, s2.y + s2.h/2);
-        ctx.closePath();
-      } else {
-        ctx.rect(s2.x, s2.y, s2.w, s2.h);
-      }
-      if (typeof applyShapeStyleToPath === 'function') {
-        applyShapeStyleToPath(ctx, entry.style, entry.color, s2);
-      } else {
-        if (t === 'shape-line' || t === 'shape-trait') {
-          ctx.strokeStyle = entry.color; ctx.lineWidth = parseFloat(document.getElementById('outlineThickness')?.value || '1'); ctx.stroke();
-        } else { ctx.fillStyle = entry.color; ctx.fill(); }
-      }
-      ctx.restore();
-    };
-  }
-
-  // Placeholders sûrs pour fonctions/états attendus par le code existant
-  if (typeof window.updateUndoRedoButtons === 'undefined') {
-    window.updateUndoRedoButtons = function(){ /* noop safe */ };
-  }
-  if (typeof window.uploadInput === 'undefined') {
-    window.uploadInput = document.getElementById('uploadImage') || null;
-  }
-  if (typeof window.importedImages === 'undefined') {
-    window.importedImages = [];
-  }
-  if (typeof window.isResizing === 'undefined') {
-    window.isResizing = false;
+    window.ctx = window.canvas.getContext('2d');
   }
 
 // 1. Ajouter l'icône Texte dans la barre d'outils gauche
@@ -1792,7 +1004,7 @@ textOptionsPanel.innerHTML = `
             </div>
             <div>
                 <label for="textFontSize" class="block text-xs mb-1">Taille</label>
-                <input type="range" id="textFontSize" min="8" max="20000" value="24" class="w-full" />
+                <input type="range" id="textFontSize" min="8" max="200" value="24" class="w-full" />
                 <div class="flex justify-between text-xs">
                     <span id="textFontSizeValue">24</span>
                     <span>px</span>
@@ -1889,70 +1101,6 @@ textOptionsPanel.innerHTML = `
             </div>
         </div>
         
-        <!-- 3D Perspective & Depth -->
-        <div class="mt-4 border-t border-[#555] pt-2">
-            <label class="flex items-center text-xs mb-2 font-bold text-[#00aaff] cursor-pointer">
-                <input type="checkbox" id="text3DActive" class="mr-2" onchange="document.getElementById('text3DOptions').classList.toggle('hidden', !this.checked); updateSelectedText();" />
-                <span>Perspective / 3D</span>
-            </label>
-            <div id="text3DOptions" class="hidden space-y-2 pl-2 border-l border-[#444]">
-                <!-- Perspective -->
-                <div>
-                    <label class="block text-xs mb-1">Perspective (Skew)</label>
-                    <div class="grid grid-cols-5 gap-1 text-[10px]">
-                        <label class="cursor-pointer"><input type="radio" name="textPerspective" value="0" checked onchange="updateSelectedText()"> 0</label>
-                        <label class="cursor-pointer"><input type="radio" name="textPerspective" value="10" onchange="updateSelectedText()"> 1</label>
-                        <label class="cursor-pointer"><input type="radio" name="textPerspective" value="20" onchange="updateSelectedText()"> 2</label>
-                        <label class="cursor-pointer"><input type="radio" name="textPerspective" value="30" onchange="updateSelectedText()"> 3</label>
-                        <label class="cursor-pointer"><input type="radio" name="textPerspective" value="40" onchange="updateSelectedText()"> 4</label>
-                    </div>
-                </div>
-                <!-- Profondeur -->
-                <div>
-                    <label class="block text-xs mb-1">Profondeur 3D (Depth)</label>
-                    <div class="grid grid-cols-5 gap-1 text-[10px]">
-                        <label class="cursor-pointer"><input type="radio" name="textDepth" value="0" checked onchange="updateSelectedText()"> 0</label>
-                        <label class="cursor-pointer"><input type="radio" name="textDepth" value="5" onchange="updateSelectedText()"> 5</label>
-                        <label class="cursor-pointer"><input type="radio" name="textDepth" value="10" onchange="updateSelectedText()"> 10</label>
-                        <label class="cursor-pointer"><input type="radio" name="textDepth" value="15" onchange="updateSelectedText()"> 15</label>
-                        <label class="cursor-pointer"><input type="radio" name="textDepth" value="20" onchange="updateSelectedText()"> 20</label>
-                    </div>
-                </div>
-                <!-- Texture 3D -->
-                <div>
-                    <label class="block text-xs mb-1">Texture 3D</label>
-                    <div class="grid grid-cols-5 gap-1 text-[10px]">
-                        <label class="cursor-pointer"><input type="radio" name="textTexture" value="none" checked onchange="updateSelectedText()"> None</label>
-                        <label class="cursor-pointer"><input type="radio" name="textTexture" value="metal" onchange="updateSelectedText()"> Metal</label>
-                        <label class="cursor-pointer"><input type="radio" name="textTexture" value="wood" onchange="updateSelectedText()"> Wood</label>
-                        <label class="cursor-pointer"><input type="radio" name="textTexture" value="stone" onchange="updateSelectedText()"> Stone</label>
-                        <label class="cursor-pointer"><input type="radio" name="textTexture" value="neon" onchange="updateSelectedText()"> Neon</label>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- 3D Revel Effect -->
-        <div class="mt-2 border-t border-[#555] pt-2">
-            <label class="flex items-center text-xs mb-2 font-bold text-[#ff00ff] cursor-pointer">
-                <input type="checkbox" id="textRevelActive" class="mr-2" onchange="document.getElementById('textRevelOptions').classList.toggle('hidden', !this.checked); updateSelectedText();" />
-                <span>3D Revel Effect</span>
-            </label>
-            <div id="textRevelOptions" class="hidden space-y-2 pl-2 border-l border-[#444]">
-                <div>
-                    <label class="block text-xs mb-1">Intensité</label>
-                    <div class="grid grid-cols-6 gap-1 text-[10px]">
-                        <label class="cursor-pointer"><input type="radio" name="textRevelIntensity" value="10" checked onchange="updateSelectedText()"> 10</label>
-                        <label class="cursor-pointer"><input type="radio" name="textRevelIntensity" value="20" onchange="updateSelectedText()"> 20</label>
-                        <label class="cursor-pointer"><input type="radio" name="textRevelIntensity" value="40" onchange="updateSelectedText()"> 40</label>
-                        <label class="cursor-pointer"><input type="radio" name="textRevelIntensity" value="60" onchange="updateSelectedText()"> 60</label>
-                        <label class="cursor-pointer"><input type="radio" name="textRevelIntensity" value="80" onchange="updateSelectedText()"> 80</label>
-                        <label class="cursor-pointer"><input type="radio" name="textRevelIntensity" value="100" onchange="updateSelectedText()"> 100</label>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
         <!-- Boutons d'action -->
         <div class="grid grid-cols-2 gap-2 mt-4">
             <button id="applyTextBtn" class="bg-green-600 hover:bg-green-700 text-white py-1 rounded text-sm">
@@ -1976,7 +1124,6 @@ toolsSectionText.parentNode.insertBefore(textOptionsPanel, toolsSectionText.next
 // 3. Variables pour le système de texte
 let textToolActive = false;
 let textElements = []; // Stocke tous les éléments texte créés
-window.textElements = textElements; // Expose to global
 let textEditingActive = false;
 let activeTextElement = null; // Élément texte en cours d'édition ou sélectionné
 
@@ -1989,7 +1136,7 @@ async function loadPreloadedFonts() {
     if (!font || !font.url) continue;
     const fontName = font.name || font.url.split('/').pop().split('.')[0];
     try {
-      const fontFace = new FontFace(fontName, `url("${font.url}")`);
+      const fontFace = new FontFace(fontName, `url(${font.url})`);
       await fontFace.load();
       document.fonts.add(fontFace);
       const option = document.createElement('option');
@@ -2031,8 +1178,6 @@ textIconBtn.addEventListener('click', () => {
         // Désélectionner les autres éléments
         deselectElement();
         selectedImageIndex = -1;
-        
-        updateTexturePanelVisibility();
     } else {
         // Désactiver l'outil texte
         textIconBtn.classList.remove('bg-[#00aaff]');
@@ -2055,8 +1200,6 @@ textIconBtn.addEventListener('click', () => {
         if (textEditingActive) {
             finishTextEditing();
         }
-        
-        updateTexturePanelVisibility();
     }
 });
 
@@ -2079,25 +1222,7 @@ document.getElementById('closeTextPanelBtn').addEventListener('click', () => {
     if (textEditingActive) {
         finishTextEditing();
     }
-    
-    updateTexturePanelVisibility();
 });
-
-// Fonction pour gérer l'affichage conditionnel du panneau de textures
-function updateTexturePanelVisibility() {
-  const texturePanels = document.querySelectorAll('.mb-3.p-3.bg-\\[\\#1a1a1a\\].border.border-\\[\\#333\\].rounded');
-  texturePanels.forEach(panel => {
-    const h3 = panel.querySelector('h3');
-    if (h3 && h3.textContent.includes('Phase 5')) {
-      // Le panneau Phase 5 doit être visible seulement quand l'outil texte est actif
-      if (textToolActive) {
-        panel.style.display = 'block';
-      } else {
-        panel.style.display = 'none';
-      }
-    }
-  });
-}
 
 // 5. Création d'un nouvel élément texte
 function createTextElement(x, y, initialText = "Texte") {
@@ -2135,8 +1260,7 @@ function createTextElement(x, y, initialText = "Texte") {
         align: textAlign,
         rotation: 0,
         priority: textElements.length,
-        createdAt: Date.now(),
-        texture: (window.textureOptions && window.textureOptions.enabled) ? JSON.parse(JSON.stringify(window.textureOptions)) : null
+        createdAt: Date.now()
     };
     
     textElements.push(textElement);
@@ -2149,7 +1273,6 @@ function createTextElement(x, y, initialText = "Texte") {
     return textElement;
 }
 
-// 6. Dessin d'un élément texte
 // 6. Dessin d'un élément texte
 function drawTextElement(ctx, textElement, opts = {}) {
     if (!textElement) return;
@@ -2164,26 +1287,6 @@ function drawTextElement(ctx, textElement, opts = {}) {
         ctx.rotate((textElement.rotation * Math.PI) / 180);
         ctx.translate(-centerX, -centerY);
     }
-
-    // NEW: Apply Advanced Effects Transform (3D Rotation)
-    if (textElement.advancedEffect && window.applyAdvancedEffectTransform) {
-        const centerX = textElement.x + textElement.width / 2;
-        const centerY = textElement.y + textElement.height / 2;
-        ctx.translate(centerX, centerY);
-        window.applyAdvancedEffectTransform(ctx, textElement.advancedEffect, textElement.width, textElement.height);
-        ctx.translate(-centerX, -centerY);
-    }
-    
-    // BEVEL 3D Effect for text
-    if (textElement.bevel && textElement.bevel.enabled) {
-        const b = textElement.bevel;
-        const shadowAngle = Math.atan2(b.lightY + 40, b.lightX + 40);
-        const shadowDist = b.depth * 0.8;
-        ctx.shadowColor = 'rgba(0,0,0,' + (0.3 + b.depth * 0.02) + ')';
-        ctx.shadowBlur = b.blur * 2;
-        ctx.shadowOffsetX = Math.cos(shadowAngle + Math.PI) * shadowDist;
-        ctx.shadowOffsetY = Math.sin(shadowAngle + Math.PI) * shadowDist;
-    }
     
     // Dessiner l'arrière-plan
     if (textElement.hasBackground) {
@@ -2193,129 +1296,129 @@ function drawTextElement(ctx, textElement, opts = {}) {
         ctx.globalAlpha = 1;
     }
     
+    // Appliquer styles artistiques basiques pour le texte (glacis/sfumato/abstract/cubist/surreal)
+    function applyTextArtStyle(ctx2, el) {
+      const style = window.currentBrushStyle || 'normal';
+      if (style === 'glaze' || style === 'glacis') {
+        ctx2.globalAlpha = Math.min(1, (window.shineOpacity ?? 30) / 100) * 0.5;
+      } else if (style === 'scumble' || style === 'sfumato') {
+        const off = document.createElement('canvas');
+        off.width = Math.ceil(el.width);
+        off.height = Math.ceil(el.height);
+        const octx = off.getContext('2d');
+        octx.filter = `blur(${Math.max(2, window.blurEffect || 2)}px)`;
+        octx.font = `${(el.style && el.style.includes('bold') ? 'bold ' : '')}${(el.style && el.style.includes('italic') ? 'italic ' : '')}${el.fontSize}px ${el.fontFamily}`;
+        octx.fillStyle = el.color;
+        octx.textBaseline = 'top';
+        const linesL = el.text.split('\n');
+        const lh = el.fontSize * 1.2;
+        linesL.forEach((line, i) => {
+          octx.textAlign = el.align;
+          const drawXLocal = el.align === 'center' ? el.width / 2 : (el.align === 'right' ? el.width : 0);
+          octx.fillText(line, drawXLocal, i * lh);
+        });
+        ctx2.drawImage(off, el.x, el.y);
+        return true;
+      } else if (style === 'abstract') {
+        const variants = [
+          adjustColorBrightness(el.color, 20),
+          adjustColorBrightness(el.color, -20)
+        ];
+        const linesL = el.text.split('\n');
+        const lh = el.fontSize * 1.2;
+        variants.forEach((v, i) => {
+          ctx2.globalAlpha = 0.4;
+          ctx2.fillStyle = v;
+          ctx2.font = `${(el.style && el.style.includes('bold') ? 'bold ' : '')}${(el.style && el.style.includes('italic') ? 'italic ' : '')}${el.fontSize}px ${el.fontFamily}`;
+          ctx2.textBaseline = 'top';
+          linesL.forEach((line, idx) => {
+            let dx = el.x + (i === 0 ? 2 : -2);
+            let drawX = dx;
+            if (el.align === 'center') drawX = el.x + el.width / 2;
+            else if (el.align === 'right') drawX = el.x + el.width;
+            ctx2.fillText(line, drawX, el.y + (idx * lh) + (i === 0 ? 1 : -1));
+          });
+          ctx2.globalAlpha = 1;
+        });
+      } else if (style === 'cubist') {
+        ctx2.save();
+        ctx2.globalAlpha = 0.85;
+        const seg = 6;
+        for (let i = 0; i < seg; i++) {
+          ctx2.beginPath();
+          const rx = el.x + (el.width / seg) * i;
+          ctx2.rect(rx, el.y, el.width / seg, el.height);
+          ctx2.clip();
+        }
+        ctx2.restore();
+      } else if (style === 'surreal') {
+        ctx2.save();
+        ctx2.shadowColor = adjustColorBrightness(el.color, 40);
+        ctx2.shadowBlur = 10;
+        ctx2.globalAlpha = 0.95;
+        ctx2.restore();
+      }
+      return false;
+    }
+
     // Configurer la police
     let fontStyle = '';
     if (textElement.style && textElement.style.includes('bold')) fontStyle += 'bold ';
     if (textElement.style && textElement.style.includes('italic')) fontStyle += 'italic ';
     
     ctx.font = `${fontStyle}${textElement.fontSize}px ${textElement.fontFamily}`;
-    ctx.textAlign = textElement.align;
+    ctx.fillStyle = textElement.color;
+    if (typeof textElement.opacity === 'number') {
+      ctx.globalAlpha = Math.max(0, Math.min(1, textElement.opacity));
+    }
     ctx.textBaseline = 'top';
-
-    // Helper pour dessiner le contenu
-    const drawTextContent = (colorOverride) => {
-        const lines = textElement.text.split('\n');
-        const lineHeight = textElement.fontSize * 1.2;
-        
-        // TEXTURE FOR TEXT
-        let fillStyle = colorOverride || textElement.color;
-        if (!colorOverride && textElement.texture && textElement.texture.enabled && window.getTexturePattern) {
-             const pattern = window.getTexturePattern(ctx, textElement.texture);
-             if (pattern) {
-                 const matrix = new DOMMatrix();
-                 if (textElement.texture.scale) {
-                     const sc = textElement.texture.scale / 100;
-                     matrix.scaleSelf(sc, sc);
-                 }
-                 if (textElement.texture.angle) {
-                     matrix.rotateSelf(textElement.texture.angle);
-                 }
-                 pattern.setTransform(matrix);
-                 fillStyle = pattern;
-                 
-                 if (textElement.texture.blendMode) {
-                     ctx.globalCompositeOperation = textElement.texture.blendMode;
-                 }
-                 if (textElement.texture.opacity !== undefined) {
-                     ctx.globalAlpha = textElement.texture.opacity / 100;
-                 }
-             }
+    
+    // Gérer l'alignement et le texte multi-lignes
+    const lines = textElement.text.split('\n');
+    const lineHeight = textElement.fontSize * 1.2;
+    
+    const handled = applyTextArtStyle(ctx, textElement);
+    lines.forEach((line, index) => {
+        let drawX = textElement.x;
+        if (textElement.align === 'center') {
+            drawX = textElement.x + textElement.width / 2;
+            ctx.textAlign = 'center';
+        } else if (textElement.align === 'right') {
+            drawX = textElement.x + textElement.width;
+            ctx.textAlign = 'right';
+        } else {
+            ctx.textAlign = 'left';
         }
         
-        ctx.fillStyle = fillStyle;
-        
-        lines.forEach((line, index) => {
-            let drawX = textElement.x;
-            if (textElement.align === 'center') {
-                drawX = textElement.x + textElement.width / 2;
-            } else if (textElement.align === 'right') {
-                drawX = textElement.x + textElement.width;
-            }
-            
-            const drawY = textElement.y + (index * lineHeight);
-            ctx.fillText(line, drawX, drawY);
-            
-            // Décorations (seulement pour le texte principal)
-            if (!colorOverride && textElement.decoration && textElement.decoration !== 'none') {
-                const metrics = ctx.measureText(line);
-                const textWidth = metrics.width;
-                let lineX = drawX;
-                if (textElement.align === 'center') lineX -= textWidth / 2;
-                else if (textElement.align === 'right') lineX -= textWidth;
-                
-                let decoY = drawY + lineHeight * 0.85;
-                if (textElement.decoration === 'line-through') decoY = drawY + lineHeight * 0.5;
-                if (textElement.decoration === 'overline') decoY = drawY;
-                
-                ctx.beginPath();
-                ctx.moveTo(lineX, decoY);
-                ctx.lineTo(lineX + textWidth, decoY);
-                ctx.lineWidth = Math.max(1, textElement.fontSize * 0.05);
-                ctx.strokeStyle = textElement.color;
-                ctx.stroke();
-            }
-        });
-    };
-
-    // 3D Perspective & Depth Logic
-    if (textElement.is3D) {
-        const depth = textElement.depth || 0;
-        const perspective = textElement.perspective || 0;
-        const texture = textElement.texture3d || 'none';
-        
-        for (let i = depth; i > 0; i--) {
-            ctx.save();
-            // Simple depth offset + perspective simulation
-            const off = i * (1 + perspective/10);
-            ctx.translate(off, off); 
-            
-            let depthColor = adjustColorBrightness(textElement.color, -30);
-            if (texture === 'metal') depthColor = i%2 ? '#aaaaaa' : '#888888';
-            else if (texture === 'wood') depthColor = i%3 ? '#8B4513' : '#A0522D';
-            else if (texture === 'stone') depthColor = '#777777';
-            else if (texture === 'neon') {
-                ctx.shadowColor = textElement.color;
-                ctx.shadowBlur = 10;
-                depthColor = '#ffffff';
-            }
-            
-            drawTextContent(depthColor);
-            ctx.restore();
+      if (!handled) {
+        // Décoration: underline / line-through / overline (dessinée manuellement)
+        ctx.fillText(line, drawX, textElement.y + (index * lineHeight));
+        if (textElement.decoration && textElement.decoration !== 'none') {
+          const metrics = ctx.measureText(line);
+          const lineWidth = metrics.width;
+          const baseY = textElement.y + (index * lineHeight);
+          let decoY = baseY + textElement.fontSize; // underline
+          if (textElement.decoration === 'line-through') {
+            decoY = baseY + textElement.fontSize * 0.55;
+          } else if (textElement.decoration === 'overline') {
+            decoY = baseY + 1;
+          }
+          let startX = drawX;
+          if (ctx.textAlign === 'center') startX = drawX - lineWidth / 2;
+          else if (ctx.textAlign === 'right') startX = drawX - lineWidth;
+          ctx.beginPath();
+          ctx.moveTo(startX, decoY);
+          ctx.lineTo(startX + lineWidth, decoY);
+          ctx.lineWidth = Math.max(1, textElement.fontSize * 0.05);
+          ctx.strokeStyle = textElement.color;
+          ctx.stroke();
         }
-    }
-    
-    // 3D Revel Effect (Bevel/Relief)
-    if (textElement.isRevel) {
-        const intensity = textElement.revelIntensity || 10;
-        ctx.shadowColor = 'rgba(0,0,0,0.5)';
-        ctx.shadowOffsetX = intensity / 5;
-        ctx.shadowOffsetY = intensity / 5;
-        ctx.shadowBlur = intensity / 2;
-    }
-
-    // Dessiner le texte principal
-    ctx.globalAlpha = textElement.opacity !== undefined ? textElement.opacity : 1;
-    drawTextContent();
-    
-    // NEW: Apply Advanced Effects Post (Bevel, Reflection)
-    if (textElement.advancedEffect && window.drawAdvancedEffectPost) {
-        window.drawAdvancedEffectPost(ctx, textElement.advancedEffect, textElement.x, textElement.y, textElement.width, textElement.height, () => drawTextContent());
-    }
-
+      }
+    });
     ctx.globalAlpha = 1;
-    ctx.shadowColor = 'transparent'; // Reset shadow
-
     // Dessiner la bordure de sélection si actif
+    // Ne jamais afficher la bordure pointillée ni les handles,
+    // sauf si une sélection via calques est explicitement active
     if (!opts.skipSelection && window.layerSelectionActive && activeTextElement && activeTextElement.id === textElement.id) {
         ctx.strokeStyle = '#00aaff';
         ctx.lineWidth = 1;
@@ -2436,26 +1539,21 @@ function startTextEditing(textElement) {
     // Calculer la position écran
     const canvasElement = document.getElementById('drawingCanvas');
     const canvasRect = canvasElement.getBoundingClientRect();
-    // Ratio entre la taille affichée et la taille interne du canvas
     const scaleX = canvasRect.width / canvasElement.width;
     const scaleY = canvasRect.height / canvasElement.height;
     
     // Styles
     textarea.style.position = 'absolute';
-    // Utiliser le ratio d'affichage pour convertir les coordonnées canvas en coordonnées écran
-    const z = window.zoomLevel || 1;
-    const offX = window.canvasOffset?.x || 0;
-    const offY = window.canvasOffset?.y || 0;
-    // Le texte est dessiné avec textBaseline='top', donc il commence à (x, y) et s'étend vers le bas
-    // Appliquer le ratio d'affichage (scaleX/scaleY) pour mapper les coordonnées canvas vers l'écran
-    const screenX = canvasRect.left + ((textElement.x * z + offX) * scaleX);
-    const screenY = canvasRect.top + ((textElement.y * z + offY) * scaleY);
+    // Ajustement pour le zoom et le pan si implémentés, sinon simple projection
+    // On suppose que canvasOffset et zoomLevel sont globaux
+    const screenX = canvasRect.left + (textElement.x * zoomLevel + canvasOffset.x);
+    const screenY = canvasRect.top + (textElement.y * zoomLevel + canvasOffset.y);
     
     textarea.style.left = screenX + 'px';
     textarea.style.top = screenY + 'px';
-    textarea.style.width = ((textElement.width || 200) * z * scaleX) + 'px';
-    textarea.style.height = ((textElement.height || (textElement.fontSize * 1.5)) * z * scaleY) + 'px';
-    textarea.style.fontSize = ((textElement.fontSize || 16) * z * Math.min(scaleX, scaleY)) + 'px';
+    textarea.style.width = (textElement.width * zoomLevel) + 'px';
+    textarea.style.height = (textElement.height * zoomLevel) + 'px';
+    textarea.style.fontSize = (textElement.fontSize * zoomLevel) + 'px';
     textarea.style.fontFamily = textElement.fontFamily;
     textarea.style.color = textElement.color;
     textarea.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
@@ -2479,27 +1577,6 @@ function startTextEditing(textElement) {
         textarea.style.height = 'auto';
         textarea.style.height = textarea.scrollHeight + 'px';
     });
-
-    // Fonction pour mettre à jour la position du textarea en temps réel (suivi du texte comme une ombre)
-    window.updateTextEditAreaPosition = function(te) {
-        const ta = document.getElementById('textEditArea');
-        if (!ta || !te) return;
-        const canvasEl = document.getElementById('drawingCanvas');
-        const r = canvasEl.getBoundingClientRect();
-        // Ratio entre la taille affichée et la taille interne du canvas
-        const scaleX = r.width / canvasEl.width;
-        const scaleY = r.height / canvasEl.height;
-        const z = window.zoomLevel || 1;
-        const offX = window.canvasOffset?.x || 0;
-        const offY = window.canvasOffset?.y || 0;
-        const sx = r.left + ((te.x * z + offX) * scaleX);
-        const sy = r.top + ((te.y * z + offY) * scaleY);
-        ta.style.left = sx + 'px';
-        ta.style.top = sy + 'px';
-        ta.style.width = ((te.width || 200) * z * scaleX) + 'px';
-        ta.style.height = ((te.height || (te.fontSize * 1.5)) * z * scaleY) + 'px';
-        ta.style.fontSize = ((te.fontSize || 16) * z * Math.min(scaleX, scaleY)) + 'px';
-    };
 }
 
 function finishTextEditing() {
@@ -2513,9 +1590,8 @@ function finishTextEditing() {
     
     // Mettre à jour dimensions
     const rect = textarea.getBoundingClientRect();
-    const z = window.zoomLevel || 1;
-    activeTextElement.width = rect.width / z;
-    activeTextElement.height = rect.height / z;
+    activeTextElement.width = rect.width / zoomLevel;
+    activeTextElement.height = rect.height / zoomLevel;
     
     textarea.remove();
     textEditingActive = false;
@@ -2572,34 +1648,6 @@ document.getElementById('fontUpload').addEventListener('change', async function(
       const strokeWidth = s.outlineThickness || 1;
       const baseOpacity = ctx.globalAlpha;
 
-      // TEXTURE LOGIC
-      let activeFillStyle = finalColor;
-      if (s.texture && s.texture.enabled && window.getTexturePattern) {
-          const pattern = window.getTexturePattern(ctx, s.texture);
-          if (pattern) {
-             const matrix = new DOMMatrix();
-             // Optional: translate to shape position to align texture?
-             // matrix.translateSelf(s.x, s.y); 
-             if (s.texture.scale) {
-                 const sc = s.texture.scale / 100;
-                 matrix.scaleSelf(sc, sc);
-             }
-             if (s.texture.angle) {
-                 matrix.rotateSelf(s.texture.angle);
-             }
-             pattern.setTransform(matrix);
-             activeFillStyle = pattern;
-             
-             if (s.texture.blendMode) {
-                 ctx.globalCompositeOperation = s.texture.blendMode;
-             }
-             // Apply texture opacity to ALL styles
-             if (s.texture.opacity !== undefined) {
-                 ctx.globalAlpha = (s.texture.opacity / 100) * baseOpacity;
-             }
-          }
-      }
-
       switch (shapeStyle) {
         case 'flat-stroke':
           ctx.fillStyle = 'transparent';
@@ -2623,7 +1671,7 @@ document.getElementById('fontUpload').addEventListener('change', async function(
           ctx.shadowBlur = 10;
           ctx.shadowOffsetX = 4;
           ctx.shadowOffsetY = 4;
-          ctx.fillStyle = activeFillStyle;
+          ctx.fillStyle = finalColor;
           ctx.fill();
           ctx.restore();
           break;
@@ -2635,7 +1683,7 @@ document.getElementById('fontUpload').addEventListener('change', async function(
           ctx.fillStyle = 'rgba(0,0,0,0.4)';
           ctx.fillRect(s.x + 3, s.y + 3, s.w - 6, s.h - 6);
           ctx.restore();
-          ctx.fillStyle = activeFillStyle;
+          ctx.fillStyle = finalColor;
           ctx.globalAlpha = baseOpacity;
           ctx.fill();
           break;
@@ -2644,7 +1692,7 @@ document.getElementById('fontUpload').addEventListener('change', async function(
           ctx.save();
           ctx.shadowColor = finalColor;
           ctx.shadowBlur = 15;
-          ctx.fillStyle = activeFillStyle;
+          ctx.fillStyle = finalColor;
           ctx.fill();
           ctx.restore();
           break;
@@ -2694,193 +1742,11 @@ document.getElementById('fontUpload').addEventListener('change', async function(
           ctx.stroke();
           break;
 
-        case 'neon':
-          const neonOpts = (window.shapeStyleOptions && window.shapeStyleOptions.neon) || {};
-          ctx.save();
-          ctx.shadowColor = neonOpts.color || finalColor;
-          ctx.shadowBlur = neonOpts.glow || 20;
-          ctx.strokeStyle = finalColor;
-          ctx.lineWidth = strokeWidth * 1.5;
-          ctx.stroke();
-          if (neonOpts.opacity) {
-              ctx.fillStyle = neonOpts.color || finalColor;
-              ctx.globalAlpha = (neonOpts.opacity / 100);
-              ctx.fill();
-          }
-          ctx.restore();
-          break;
-
-        case 'sketch':
-          const sketchOpts = (window.shapeStyleOptions && window.shapeStyleOptions.sketch) || {};
-          const jitter = sketchOpts.jitter || 2;
-          const repeat = sketchOpts.repeat || 3;
-          ctx.strokeStyle = finalColor;
-          ctx.lineWidth = strokeWidth;
-          ctx.fillStyle = 'transparent';
-          ctx.save();
-          for(let i=0; i<repeat; i++) {
-              const dx = (Math.random() - 0.5) * jitter;
-              const dy = (Math.random() - 0.5) * jitter;
-              ctx.translate(dx, dy);
-              ctx.stroke();
-              ctx.translate(-dx, -dy);
-          }
-          ctx.restore();
-          break;
-          
-        case 'glass':
-          const glassOpts = (window.shapeStyleOptions && window.shapeStyleOptions.glass) || {};
-          ctx.save();
-          ctx.fillStyle = glassOpts.shine || 'rgba(255,255,255,0.25)';
-          ctx.globalAlpha = (glassOpts.opacity || 30) / 100;
-          ctx.fill();
-          if (glassOpts.blur) {
-              ctx.shadowColor = finalColor;
-              ctx.shadowBlur = glassOpts.blur;
-          }
-          ctx.globalAlpha = baseOpacity;
-          ctx.strokeStyle = finalColor;
-          ctx.lineWidth = strokeWidth;
-          ctx.stroke();
-          ctx.restore();
-          break;
-          
-        case 'retro':
-           ctx.fillStyle = activeFillStyle;
-           ctx.fill();
-           // Simple pixel grid effect
-           const retroOpts = (window.shapeStyleOptions && window.shapeStyleOptions.retro) || {};
-           const pxSize = retroOpts.pixelSize || 5;
-           ctx.save();
-           ctx.globalCompositeOperation = 'source-atop';
-           ctx.fillStyle = 'rgba(0,0,0,0.2)';
-           for(let x=s.x; x<s.x+s.w; x+=pxSize) {
-               ctx.fillRect(x, s.y, 1, s.h);
-           }
-           for(let y=s.y; y<s.y+s.h; y+=pxSize) {
-               ctx.fillRect(s.x, y, s.w, 1);
-           }
-           ctx.restore();
-           break;
-           
-        case 'glitch':
-           const glitchOpts = (window.shapeStyleOptions && window.shapeStyleOptions.glitch) || {};
-           const offset = glitchOpts.offset || 5;
-           ctx.save();
-           ctx.globalCompositeOperation = 'screen';
-           ctx.fillStyle = 'rgba(255,0,0,0.5)';
-           ctx.translate(-offset, 0);
-           ctx.fill();
-           ctx.translate(offset, 0);
-           
-           ctx.fillStyle = 'rgba(0,0,255,0.5)';
-           ctx.translate(offset, 0);
-           ctx.fill();
-           ctx.translate(-offset, 0);
-           
-           ctx.fillStyle = 'rgba(0,255,0,0.5)';
-           ctx.fill();
-           ctx.restore();
-           break;
-
         case 'marker':
-          ctx.fillStyle = activeFillStyle;
+          ctx.fillStyle = finalColor;
           ctx.globalAlpha = baseOpacity * 0.85;
           ctx.fill();
           break;
-
-        // NOUVEAUX STYLES
-        case 'neon-advanced':
-           const neonAdv = (window.shapeStyleOptions && window.shapeStyleOptions['neon-advanced']) || {};
-           const glowColor = neonAdv.glowColor || finalColor;
-           const intensity = neonAdv.intensity || 20;
-           const coreColor = neonAdv.coreColor || '#ffffff';
-           
-           ctx.save();
-           ctx.shadowColor = glowColor;
-           ctx.shadowBlur = intensity;
-           ctx.strokeStyle = coreColor;
-           ctx.lineWidth = strokeWidth * 2;
-           ctx.stroke();
-           // Second pass for stronger glow
-           ctx.shadowBlur = intensity * 2;
-           ctx.stroke();
-           ctx.restore();
-           break;
-
-        case 'crayon-style':
-           const crayonOpts = (window.shapeStyleOptions && window.shapeStyleOptions['crayon-style']) || {};
-           const textureScale = crayonOpts.texture || 1;
-           ctx.save();
-           // Simuler texture papier
-           ctx.fillStyle = finalColor;
-           // Pattern simple (bruit)
-           for(let i=0; i<100; i++) {
-               const rx = Math.random() * s.w;
-               const ry = Math.random() * s.h;
-               if (ctx.isPointInPath(s.x+rx, s.y+ry)) {
-                   ctx.fillRect(s.x+rx, s.y+ry, 2*textureScale, 2*textureScale);
-               }
-           }
-           ctx.globalAlpha = 0.6;
-           ctx.fill();
-           ctx.restore();
-           break;
-
-        case 'glitch-style':
-           const glitchAdv = (window.shapeStyleOptions && window.shapeStyleOptions['glitch-style']) || {};
-           const shift = glitchAdv.shift || 5;
-           ctx.save();
-           ctx.globalCompositeOperation = 'screen';
-           ctx.fillStyle = 'rgba(255,0,0,0.7)';
-           ctx.translate(-shift, 0);
-           ctx.fill();
-           ctx.translate(shift, 0);
-           ctx.fillStyle = 'rgba(0,255,255,0.7)';
-           ctx.translate(shift, 0);
-           ctx.fill();
-           ctx.restore();
-           break;
-
-        case '3d-block':
-           const block3d = (window.shapeStyleOptions && window.shapeStyleOptions['3d-block']) || {};
-           const depth = block3d.depth || 10;
-           const angle = block3d.angle || 45;
-           const rad = angle * Math.PI / 180;
-           const dx = Math.cos(rad) * depth;
-           const dy = Math.sin(rad) * depth;
-           
-           ctx.save();
-           ctx.fillStyle = adjustColorBrightness(finalColor, -40);
-           ctx.translate(dx, dy);
-           ctx.fill();
-           ctx.translate(-dx, -dy);
-           ctx.fillStyle = finalColor;
-           ctx.fill();
-           ctx.restore();
-           break;
-
-        case 'pointillism':
-           const pointOpts = (window.shapeStyleOptions && window.shapeStyleOptions['pointillism']) || {};
-           const density = pointOpts.density || 50;
-           const dotSize = pointOpts.dotSize || 2;
-           
-           ctx.save();
-           ctx.fillStyle = finalColor;
-           // Bounding box approximation
-           for(let i=0; i<density*10; i++) {
-               const rx = Math.random() * s.w;
-               const ry = Math.random() * s.h;
-               // Check if point is inside path (approximatif car isPointInPath utilise le path courant)
-               // Note: applyShapeStyleToPath est appelé APRES la définition du path
-               if (ctx.isPointInPath(s.x+rx, s.y+ry)) {
-                   ctx.beginPath();
-                   ctx.arc(s.x+rx, s.y+ry, dotSize, 0, Math.PI*2);
-                   ctx.fill();
-               }
-           }
-           ctx.restore();
-           break;
 
         case 'pixel':
           ctx.imageSmoothingEnabled = false;
@@ -2959,7 +1825,7 @@ document.getElementById('fontUpload').addEventListener('change', async function(
 
         case 'flat-fill':
         default:
-          ctx.fillStyle = activeFillStyle;
+          ctx.fillStyle = finalColor;
           ctx.fill();
           break;
       }
@@ -3100,76 +1966,21 @@ function showTextMoveControls(textElement) {
     textMoveOverlay.appendChild(mkBtn('down','down'));
     textMoveOverlay.appendChild(mkBtn('left','left'));
     textMoveOverlay.appendChild(mkBtn('right','right'));
-    // Actions additionnelles: Copier, Supprimer, Propriétés
-    const copyBtn = document.createElement('button');
-    copyBtn.title = 'Copier';
-    copyBtn.textContent = '📋';
-    copyBtn.style.color = '#fff';
-    copyBtn.style.background = '#444';
-    copyBtn.style.border = 'none';
-    copyBtn.style.width = '28px';
-    copyBtn.style.height = '28px';
-    copyBtn.style.borderRadius = '4px';
-    copyBtn.style.cursor = 'pointer';
-    copyBtn.addEventListener('click', (e) => {
+    // Bouton fermeture (croix rouge)
+    const closeBtn = document.createElement('button');
+    closeBtn.innerHTML = '<i class="fas fa-times"></i>';
+    closeBtn.style.color = '#ff5555';
+    closeBtn.style.background = 'transparent';
+    closeBtn.style.border = 'none';
+    closeBtn.style.width = '24px';
+    closeBtn.style.height = '24px';
+    closeBtn.style.cursor = 'pointer';
+    closeBtn.title = 'Fermer les contrôles de déplacement';
+    closeBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      if (activeTextElement && activeTextElement.text) {
-        navigator.clipboard.writeText(activeTextElement.text).then(() => {
-          showNotification('Texte copié', 'success');
-        }).catch(() => {
-          showNotification('Copie impossible', 'error');
-        });
-      }
-    });
-    textMoveOverlay.appendChild(copyBtn);
-
-    const deleteBtn = document.createElement('button');
-    deleteBtn.title = 'Supprimer';
-    deleteBtn.textContent = '🗑️';
-    deleteBtn.style.color = '#fff';
-    deleteBtn.style.background = '#aa0000';
-    deleteBtn.style.border = 'none';
-    deleteBtn.style.width = '28px';
-    deleteBtn.style.height = '28px';
-    deleteBtn.style.borderRadius = '4px';
-    deleteBtn.style.cursor = 'pointer';
-    deleteBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      if (!activeTextElement) return;
-      const idx = textElements.indexOf(activeTextElement);
-      if (idx !== -1) textElements.splice(idx, 1);
-      if (activeTextElement.layerId) removeLayerById(activeTextElement.layerId);
-      activeTextElement = null;
       hideTextMoveControls();
-      renderLayersList();
-      redrawAll();
     });
-    textMoveOverlay.appendChild(deleteBtn);
-
-    const propsBtn = document.createElement('button');
-    propsBtn.title = 'Propriétés';
-    propsBtn.textContent = '⚙️';
-    propsBtn.style.color = '#fff';
-    propsBtn.style.background = '#444';
-    propsBtn.style.border = 'none';
-    propsBtn.style.width = '28px';
-    propsBtn.style.height = '28px';
-    propsBtn.style.borderRadius = '4px';
-    propsBtn.style.cursor = 'pointer';
-    propsBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      if (!activeTextElement) return;
-      textToolActive = true;
-      const textOptionsPanel = document.getElementById('textOptionsPanel');
-      const toolsSectionText = document.getElementById('toolsSectionText');
-      textOptionsPanel.classList.remove('hidden');
-      toolsSectionText.style.display = 'none';
-      Array.from(document.getElementById('rightPanel').children).forEach(child => {
-        if (child !== textOptionsPanel) child.style.display = 'none';
-      });
-      updateTexturePanelVisibility();
-    });
-    textMoveOverlay.appendChild(propsBtn);
+    textMoveOverlay.appendChild(closeBtn);
     document.body.appendChild(textMoveOverlay);
   }
   updateTextMoveControlsPosition(textElement);
@@ -3179,25 +1990,10 @@ function updateTextMoveControlsPosition(textElement) {
   if (!textMoveOverlay || !textElement) return;
   const canvasElement = document.getElementById('drawingCanvas');
   const rect = canvasElement.getBoundingClientRect();
-  
-  // Ratio entre la taille affichée et la taille interne du canvas
-  const scaleX = rect.width / canvasElement.width;
-  const scaleY = rect.height / canvasElement.height;
-  
-  // Utiliser les variables globales window.* pour cohérence
-  const z = window.zoomLevel || 1;
-  const offX = window.canvasOffset?.x || 0;
-  const offY = window.canvasOffset?.y || 0;
-  
-  // Centrer la popup au-dessus du texte (le texte commence à y et s'étend vers le bas)
-  const textWidth = textElement.width || (textElement.measuredWidth || 100);
-  const textCenterX = (textElement.x || 0) + (textWidth / 2);
-  const screenX = rect.left + ((textCenterX * z + offX) * scaleX) - (textMoveOverlay.offsetWidth / 2);
-  // Positionner au-dessus du haut du texte (qui est à y)
-  const screenY = rect.top + (((textElement.y || 0) * z + offY) * scaleY) - (textMoveOverlay.offsetHeight + 10);
-  
-  textMoveOverlay.style.left = `${Math.max(0, screenX)}px`;
-  textMoveOverlay.style.top = `${Math.max(0, screenY)}px`;
+  const screenX = rect.left + (textElement.x * zoomLevel + canvasOffset.x);
+  const screenY = rect.top + (textElement.y * zoomLevel + canvasOffset.y) - 40; // au-dessus
+  textMoveOverlay.style.left = `${screenX}px`;
+  textMoveOverlay.style.top = `${screenY}px`;
 }
 
 function hideTextMoveControls() {
@@ -3206,351 +2002,6 @@ function hideTextMoveControls() {
     textMoveOverlay = null;
   }
 }
-
-// ==== PANNEAU DE SÉLECTION CONTEXTUEL POUR LES TEXTES ====
-// Création du panneau (caché par défaut)
-let selectionPanel = document.createElement('div');
-selectionPanel.id = 'selectionPanel';
-selectionPanel.className = 'absolute bg-gray-800 text-white rounded-lg shadow-lg p-2 flex gap-1 z-50';
-selectionPanel.style.pointerEvents = 'auto';
-selectionPanel.style.display = 'none';
-selectionPanel.innerHTML = `
-  <button id="spCut" class="p-1 hover:bg-gray-700 rounded" title="Couper">✂️</button>
-  <button id="spCopy" class="p-1 hover:bg-gray-700 rounded" title="Copier">📋</button>
-  <button id="spDelete" class="p-1 hover:bg-gray-700 rounded" title="Supprimer">🗑️</button>
-  <button id="spProps" class="p-1 hover:bg-gray-700 rounded" title="Propriétés">⚙️</button>
-  <div class="relative inline-block">
-    <button id="spRotateToggle" class="p-1 hover:bg-gray-700 rounded" title="Rotation">🔄</button>
-    <div id="rotationPopup" class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden bg-gray-800 p-2 rounded shadow-lg border border-gray-600 w-48 z-50">
-      <div class="text-xs text-center mb-1">Rotation: <span id="rotationValueDisplay">0</span>°</div>
-      <input id="rotationRange" type="range" min="0" max="360" value="0" class="w-full mb-2">
-      <div class="flex justify-between gap-2">
-          <button id="rotationCancel" class="flex-1 text-red-500 hover:text-red-400 text-xs px-2 py-1 border border-red-500 rounded bg-transparent">✕ Annuler</button>
-          <button id="rotationValidate" class="flex-1 text-green-500 hover:text-green-400 text-xs px-2 py-1 border border-green-500 rounded bg-transparent">✓ Valider</button>
-      </div>
-    </div>
-  </div>
-`;
-document.body.appendChild(selectionPanel);
-
-let clipboardTextElement = null;
-let draggingText = null;
-// Éviter redeclaration: utiliser global unique
-if (!window.dragOffset) window.dragOffset = { x: 0, y: 0 };
-let rotationBackup = 0;
-
-function showSelectionPanelAt(x, y) {
-  selectionPanel.style.left = x + 'px';
-  selectionPanel.style.top = y + 'px';
-  selectionPanel.style.display = 'flex';
-}
-
-function hideSelectionPanel() {
-  selectionPanel.style.display = 'none';
-  document.getElementById('rotationPopup').classList.add('hidden');
-}
-
-// Gestion clic droit sur canvas pour textes
-document.getElementById('drawingCanvas').addEventListener('contextmenu', (e) => {
-  e.preventDefault();
-  const rect = e.target.getBoundingClientRect();
-  const cx = (e.clientX - rect.left - (canvasOffset?.x || 0)) / (zoomLevel || 1);
-  const cy = (e.clientY - rect.top - (canvasOffset?.y || 0)) / (zoomLevel || 1);
-  const t = getTextAtPosition(cx, cy);
-  if (t) {
-    selectTextElement(t);
-    showSelectionPanelAt(e.clientX, e.clientY);
-  } else {
-    hideSelectionPanel();
-  }
-});
-
-// Drag direct en restant cliqué sur le texte
-document.getElementById('drawingCanvas').addEventListener('mousedown', (e) => {
-  if (e.button !== 0) return; // seulement clic gauche pour drag
-  const rect = e.target.getBoundingClientRect();
-  const cx = (e.clientX - rect.left - (canvasOffset?.x || 0)) / (zoomLevel || 1);
-  const cy = (e.clientY - rect.top - (canvasOffset?.y || 0)) / (zoomLevel || 1);
-  // Détection générale: texte prioritaire, sinon garder logique existante
-  let t = getTextAtPosition(cx, cy);
-  if (!t && window.layersPanelAPI && window.layersPanelAPI.layers) {
-    const sorted = [...window.layersPanelAPI.layers].sort((a,b)=> b.priority - a.priority);
-    for (const layer of sorted) {
-      if (layer.type === 'text' && layer.ref) {
-        const w = layer.ref.width || layer.ref.measuredWidth || 100;
-        const h = layer.ref.height || layer.ref.measuredHeight || (layer.ref.size || 16);
-        if (cx >= layer.ref.x && cx <= layer.ref.x + w && cy >= layer.ref.y - h && cy <= layer.ref.y) {
-          t = layer.ref; break;
-        }
-      }
-    }
-  }
-  if (t) {
-    selectTextElement(t);
-    showTextMoveControls(t);
-    draggingText = t;
-    window.dragOffset.x = cx - t.x;
-    window.dragOffset.y = cy - t.y;
-    e.preventDefault();
-  }
-});
-
-document.addEventListener('mousemove', (e) => {
-  if (!draggingText) return;
-  const rect = canvas.getBoundingClientRect();
-  const z = window.zoomLevel || 1;
-  const offX = window.canvasOffset?.x || 0;
-  const offY = window.canvasOffset?.y || 0;
-  const cx = (e.clientX - rect.left - offX) / z;
-  const cy = (e.clientY - rect.top - offY) / z;
-  draggingText.x = Math.round(cx - window.dragOffset.x);
-  draggingText.y = Math.round(cy - window.dragOffset.y);
-  updateTextMoveControlsPosition(draggingText);
-  // Mettre à jour le textarea si en édition (suit le texte comme une ombre)
-  if (textEditingActive && window.activeTextElement === draggingText && typeof window.updateTextEditAreaPosition === 'function') {
-    window.updateTextEditAreaPosition(draggingText);
-  }
-  redrawAll();
-});
-
-document.addEventListener('mouseup', () => {
-  draggingText = null;
-});
-
-// Boutons du panneau
-document.getElementById('spCut').addEventListener('click', () => {
-  if (!activeTextElement) return;
-  clipboardTextElement = JSON.parse(JSON.stringify(activeTextElement));
-  const idx = textElements.indexOf(activeTextElement);
-  if (idx !== -1) textElements.splice(idx, 1);
-  if (window.layersPanelAPI) window.layersPanelAPI.removeLayerById(activeTextElement.id);
-  activeTextElement = null;
-  hideSelectionPanel();
-  redrawAll();
-});
-
-document.getElementById('spCopy').addEventListener('click', () => {
-  if (!activeTextElement) return;
-  clipboardTextElement = JSON.parse(JSON.stringify(activeTextElement));
-});
-
-document.getElementById('spDelete').addEventListener('click', () => {
-  if (!activeTextElement) return;
-  const idx = textElements.indexOf(activeTextElement);
-  if (idx !== -1) textElements.splice(idx, 1);
-  if (window.layersPanelAPI) window.layersPanelAPI.removeLayerById(activeTextElement.id);
-  activeTextElement = null;
-  hideSelectionPanel();
-  redrawAll();
-});
-
-document.getElementById('spProps').addEventListener('click', () => {
-  // afficher le panneau Options Texte et pré-remplir
-  if (!activeTextElement) return;
-  textToolActive = true;
-  textOptionsPanel.classList.remove('hidden');
-  toolsSectionText.style.display = 'none';
-  Array.from(document.getElementById('rightPanel').children).forEach(child => {
-    if (child !== textOptionsPanel) child.style.display = 'none';
-  });
-  hideSelectionPanel();
-});
-
-// Rotation popup
-document.getElementById('spRotateToggle').addEventListener('click', () => {
-  const pop = document.getElementById('rotationPopup');
-  if (!activeTextElement) return;
-  rotationBackup = activeTextElement.rotation || 0;
-  document.getElementById('rotationRange').value = rotationBackup;
-  document.getElementById('rotationValueDisplay').textContent = rotationBackup;
-  pop.classList.toggle('hidden');
-});
-
-document.getElementById('rotationRange').addEventListener('input', (e) => {
-  const v = parseInt(e.target.value) || 0;
-  document.getElementById('rotationValueDisplay').textContent = v;
-  if (activeTextElement) {
-    activeTextElement.rotation = v;
-    redrawAll();
-  }
-});
-
-document.getElementById('rotationCancel').addEventListener('click', () => {
-  if (activeTextElement != null) {
-    activeTextElement.rotation = rotationBackup;
-    redrawAll();
-  }
-  document.getElementById('rotationPopup').classList.add('hidden');
-});
-
-document.getElementById('rotationValidate').addEventListener('click', () => {
-  document.getElementById('rotationPopup').classList.add('hidden');
-});
-
-// Coller via outil paste ou menu contextuel
-document.addEventListener('keydown', (e) => {
-  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
-    if (!clipboardTextElement) return;
-    const clone = JSON.parse(JSON.stringify(clipboardTextElement));
-    clone.id = 'text-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
-    clone.x += 10; clone.y += 10; // petit décalage
-    textElements.push(clone);
-    if (window.layersPanelAPI) window.layersPanelAPI.addLayerForText(clone);
-    redrawAll();
-  }
-});
-
-// ==== GRADIENT TEXTE ET CORRECTION DILUTION BRUSH ====
-// Applique un gradient de couleur pour le texte si colorMode=gradient
-function getCurrentFillColorOrGradientForText(el) {
-  const modeEl = document.getElementById('colorMode');
-  if (modeEl && modeEl.value === 'gradient') {
-    const angle = parseInt(document.getElementById('gradientAngle')?.value || '0');
-    const rad = angle * Math.PI / 180;
-    
-    // Calculate gradient vector based on text box
-    const cx = el.x + el.width/2;
-    const cy = el.y + el.height/2;
-    const dist = Math.sqrt(el.width*el.width + el.height*el.height)/2;
-    
-    const x1 = cx - Math.cos(rad)*dist;
-    const y1 = cy - Math.sin(rad)*dist;
-    const x2 = cx + Math.cos(rad)*dist;
-    const y2 = cy + Math.sin(rad)*dist;
-    
-    const g = ctx.createLinearGradient(x1, y1, x2, y2);
-    
-    const c1 = document.getElementById('color1')?.value || '#ff0000';
-    const c2 = document.getElementById('color2')?.value || '#0000ff';
-    
-    // Apply intensity/saturation if functions exist
-    let ac1 = c1, ac2 = c2;
-    if (typeof adjustColorIntensitySaturation === 'function') {
-        const intensity = parseFloat(document.getElementById('gradientIntensity')?.value || 100);
-        const saturation = parseFloat(document.getElementById('gradientSaturation')?.value || 100);
-        ac1 = adjustColorIntensitySaturation(c1, intensity, saturation);
-        ac2 = adjustColorIntensitySaturation(c2, intensity, saturation);
-    }
-    
-    // Apply transitions
-    const topPos = (parseFloat(document.getElementById('topTransition')?.value || 0)) / 100;
-    const middlePos = (parseFloat(document.getElementById('middleTransition')?.value || 50)) / 100;
-    const bottomPos = (parseFloat(document.getElementById('bottomTransition')?.value || 100)) / 100;
-    
-    g.addColorStop(topPos, ac1);
-    if (typeof blendColors === 'function') {
-        g.addColorStop(middlePos, blendColors(ac1, ac2, 0.5));
-    } else {
-        g.addColorStop(middlePos, ac1); // Fallback
-    }
-    g.addColorStop(bottomPos, ac2);
-    
-    return g;
-  }
-  return el.color;
-}
-
-// Surcharger drawTextElement pour utiliser le gradient sans dilution
-const _drawTextElement = drawTextElement;
-drawTextElement = function(ctx, textElement, opts = {}) {
-  if (!textElement) return;
-  // couleur/gradient corrects
-  const originalColor = textElement.color;
-  const fill = getCurrentFillColorOrGradientForText(textElement);
-  textElement.color = fill;
-  ctx.imageSmoothingEnabled = false; // pas de dilution
-  _drawTextElement(ctx, textElement, opts);
-  textElement.color = originalColor; // restaurer
-};
-
-// Correction dilution pour dessins: utiliser opacité stricte et pixel snapping quand brushSize=1
-function enablePrecisePixelModeIfNeeded() {
-  const bs = parseFloat(document.getElementById('brushSize')?.value || '1');
-  if (bs <= 1.0) {
-    ctx.imageSmoothingEnabled = false;
-  } else {
-    ctx.imageSmoothingEnabled = true;
-  }
-}
-
-// Hooker redrawAll pour activer le mode précis
-const __origRedraw = window.redrawAll;
-window.redrawAll = function() {
-  enablePrecisePixelModeIfNeeded();
-  __origRedraw && __origRedraw();
-  // Les textes seront redessinés ensuite par notre surcharge
-  const sorted = [...textElements].sort((a,b)=> (a.priority ?? 0) - (b.priority ?? 0));
-  sorted.forEach(text => { drawTextElement(ctx, text); });
-};
-
-// Snap des points de peinture à la grille pixel si brushSize=1
-function snapToPixel(x, y) {
-  const bs = parseFloat(document.getElementById('brushSize')?.value || '1');
-  if (bs <= 1.0) {
-    return { x: Math.round(x), y: Math.round(y) };
-  }
-  return { x, y };
-}
-
-// ==== STABILISATION DE L’ANCRAGE DES FORMES PENDANT LE DÉPLOIEMENT ====
-// Si le code global utilise startX/startY et currentX/currentY, assurer que startX/startY ne bougent jamais
-if (!window.shapeDeploy) window.shapeDeploy = {};
-window.shapeDeploy.startFixed = false;
-document.getElementById('drawingCanvas').addEventListener('mousedown', (e) => {
-  if (currentTool && currentTool.startsWith('shape-')) {
-    const rect = canvas.getBoundingClientRect();
-    const sx = (e.clientX - rect.left - (canvasOffset?.x || 0)) / (zoomLevel || 1);
-    const sy = (e.clientY - rect.top - (canvasOffset?.y || 0)) / (zoomLevel || 1);
-    window.shapeDeploy.startX = sx;
-    window.shapeDeploy.startY = sy;
-    window.shapeDeploy.startFixed = true;
-  }
-});
-
-document.addEventListener('mousemove', (e) => {
-  if (window.shapeDeploy.startFixed && currentTool && currentTool.startsWith('shape-') && e.buttons === 1) {
-    const rect = canvas.getBoundingClientRect();
-    const cx = (e.clientX - rect.left - (canvasOffset?.x || 0)) / (zoomLevel || 1);
-    const cy = (e.clientY - rect.top - (canvasOffset?.y || 0)) / (zoomLevel || 1);
-    // Redessiner la forme en temps réel sans bouger le point de base
-    const s = { x: window.shapeDeploy.startX, y: window.shapeDeploy.startY, w: cx - window.shapeDeploy.startX, h: cy - window.shapeDeploy.startY };
-    // Appel d’un renderer générique si disponible
-    if (window.renderShapePreview) {
-      window.renderShapePreview(s);
-    } else {
-      // Fallback: simple preview rectangle
-      redrawAll();
-      ctx.save();
-      ctx.strokeStyle = '#00aaff';
-      ctx.lineWidth = 1;
-      ctx.setLineDash([4, 4]);
-      ctx.strokeRect(s.x, s.y, s.w, s.h);
-      ctx.setLineDash([]);
-      ctx.restore();
-    }
-  }
-});
-
-document.addEventListener('mouseup', () => {
-  window.shapeDeploy.startFixed = false;
-});
-
-// ==== APERÇU TEMPS RÉEL PENDANT DESSIN/FORME ====
-// Si un handler global existe pour peindre en temps réel, nous activons redraw pendant le drag
-document.getElementById('drawingCanvas').addEventListener('mousemove', (e) => {
-  // afficher en temps réel tant que clic maintenu
-  if (e.buttons === 1 && (currentTool?.startsWith('brush') || currentTool === 'eraser')) {
-    const rect = canvas.getBoundingClientRect();
-    const cx = (e.clientX - rect.left - (canvasOffset?.x || 0)) / (zoomLevel || 1);
-    const cy = (e.clientY - rect.top - (canvasOffset?.y || 0)) / (zoomLevel || 1);
-    const p = snapToPixel(cx, cy);
-    // Appeler un paintPreview si fourni
-    if (window.paintPreview) {
-      window.paintPreview(p.x, p.y);
-    }
-    redrawAll();
-  }
-});
 
 // Pointer events pour le texte
 const originalPointerDown = canvas.onpointerdown;
@@ -3600,10 +2051,6 @@ canvas.onpointermove = function(e){
   if (isDragging && activeTextElement) {
     activeTextElement.x = pos.x - dragOffset.x;
     activeTextElement.y = pos.y - dragOffset.y;
-    // Mettre à jour la popup en temps réel pendant le déplacement
-    if (typeof updateTextMoveControlsPosition === 'function') {
-      updateTextMoveControlsPosition(activeTextElement);
-    }
     redrawAll();
     e.preventDefault();
     return;
@@ -3722,8 +2169,6 @@ document.addEventListener('keydown', (e) => {
       gradientAngle = 0,
       importedImages = [],
       selectedImageIndex = -1,
-      selectedTextIndex = -1,
-      selectedShapeIndex = -1,
       resizeHandle = null,
       isDraggingImage = false,
       // Variables de sélection avancées
@@ -3806,21 +2251,11 @@ document.addEventListener('keydown', (e) => {
       redoStack = [],
       maxUndoSteps = 50;
 
-    // EXPOSE GLOBALS FOR EXTERNAL SCRIPTS (LAYERS PANEL)
-    window.canvas = canvas;
-    window.ctx = ctx;
-    window.shapes = shapes;
-    window.importedImages = importedImages;
-    window.drawingStrokes = drawingStrokes;
-    window.undoStack = undoStack;
-    window.redoStack = redoStack;
-
     // Initialiser le tableau des zones effacées
     window.erasedAreas = [];
     
     // Canvas de sauvegarde pour les dessins - INITIALISER IMMÉDIATEMENT
     let drawingLayer = document.createElement('canvas');
-    window.drawingLayer = drawingLayer;
     drawingLayer.width = 3840; // Même taille que le canvas principal
     drawingLayer.height = 2160;
     
@@ -4171,71 +2606,17 @@ document.addEventListener('keydown', (e) => {
       const x1 = w/2 + Math.cos(rad)*w/2;
       const y1 = h/2 + Math.sin(rad)*h/2;
       const grad = ctx.createLinearGradient(x0,y0,x1,y1);
-      
-      // Get modifiers from DOM if available
-      const intensityEl = document.getElementById('gradientIntensity');
-      const intensity = intensityEl ? parseFloat(intensityEl.value) / 100 : 1;
-
-      // Use user provided colors directly without mixing
-      if (colors && colors.length > 0) {
-        colors.forEach((c, index) => {
-            const pos = index / (colors.length - 1);
-            
-            // Apply intensity to alpha
-            let r = c.r;
-            let g = c.g;
-            let b = c.b;
-            let a = c.a * intensity;
-            
-            grad.addColorStop(pos, `rgba(${r},${g},${b},${a})`);
-        });
-      } else {
-        // Fallback
-        grad.addColorStop(0, '#000000');
-        grad.addColorStop(1, '#ffffff');
+      for(let stop of detailedStops){
+        const base = hexToRgba(stop.color);
+        let t = stop.pos * (colors.length-1);
+        let i = Math.floor(t);
+        let f = t - i;
+        if(i >= colors.length-1) i = colors.length-2, f=1;
+        const c = lerpColor(colors[i], colors[i+1], f);
+        const mixed = {r:(base.r+c.r)/2,g:(base.g+c.g)/2,b:(base.b+c.b)/2,a:(base.a+c.a)/2};
+        grad.addColorStop(stop.pos, rgbaToString(mixed));
       }
       return grad;
-    }
-
-    // Cache pour les images de formes
-    const formeImgCache = {};
-    const formeImgTempCanvas = document.createElement('canvas');
-    const formeImgTempCtx = formeImgTempCanvas.getContext('2d');
-
-    // MAPPING DES ICÔNES FONT AWESOME
-    const SHAPE_ICONS = {
-        'car': '\uf1b9', 'plane': '\uf072', 'rocket': '\uf135', 'boat': '\uf21a',
-        'house': '\uf015', 'building': '\uf1ad', 'door': '\uf52a', 'window': '\uf2d0',
-        'phone': '\uf095', 'laptop': '\uf109', 'tv': '\uf26c',
-        'folder': '\uf07b', 'file': '\uf15b', 'trash': '\uf1f8',
-        'lock': '\uf023', 'key': '\uf084',
-        'map-pin': '\uf276', 'location': '\uf3c5',
-        'play': '\uf04b', 'pause': '\uf04c', 'stop': '\uf04d', 'record': '\uf111', 'volume': '\uf028',
-        'check': '\uf00c', 'crossmark': '\uf00d', 'question': '\uf128', 'exclamation': '\uf12a',
-        'speech-bubble': '\uf086', 'quote': '\uf10d',
-        'hourglass': '\uf254', 'loading': '\uf110',
-        'target': '\uf140', 'scope': '\uf05b',
-        'compass': '\uf14e', 'anchor': '\uf13d',
-        'puzzle': '\uf12e', 'jigsaw': '\uf12e',
-        'dna': '\uf471', 'splat': '\uf5c7',
-        'fish': '\uf578', 'bird': '\uf518', 'cat': '\uf6be', 'dog': '\uf6d3',
-        'apple': '\uf179', 'cherry': '\uf19e', 'banana': '\uf19e', // Banana fallback
-        'starfish': '\uf005', 'shell': '\uf005', // Fallback
-        'bracket-left': '[', 'bracket-right': ']', 'brace-left': '{', 'brace-right': '}',
-        'heart': '\uf004', 'star': '\uf005', 'cloud': '\uf0c2', 'user': '\uf007'
-    };
-
-    function getCachedFormeImg(url) {
-      if (!url) return null;
-      if (formeImgCache[url]) return formeImgCache[url];
-      const img = new Image();
-      img.crossOrigin = "Anonymous";
-      img.src = url;
-      img.onload = () => {
-         if (window.redrawAll) window.redrawAll();
-      };
-      formeImgCache[url] = img;
-      return img;
     }
 
     // Dessiner formes et traits avec couleur propre à chaque élément (fixe)
@@ -4243,103 +2624,6 @@ document.addEventListener('keydown', (e) => {
       if (!s || !s.type) return; // Protection contre les objets invalides
       
       ctx.save(); // Sauvegarder l'état du contexte
-
-      // NEW: Apply Advanced Effects Transform (3D Rotation)
-      if (s.advancedEffect && window.applyAdvancedEffectTransform) {
-          const centerX = s.x + s.w / 2;
-          const centerY = s.y + s.h / 2;
-          ctx.translate(centerX, centerY);
-          window.applyAdvancedEffectTransform(ctx, s.advancedEffect, s.w, s.h);
-          ctx.translate(-centerX, -centerY);
-      }
-      
-      // 3D Revel Effect
-      if (s.isRevel) {
-          const intensity = s.revelIntensity || 10;
-          ctx.shadowColor = 'rgba(0,0,0,0.5)';
-          ctx.shadowOffsetX = intensity / 5;
-          ctx.shadowOffsetY = intensity / 5;
-          ctx.shadowBlur = intensity / 2;
-      }
-      
-      // BEVEL 3D Effect
-      if (s.bevel && s.bevel.enabled) {
-          const b = s.bevel;
-          const shadowAngle = Math.atan2(b.lightY + 40, b.lightX + 40); // Normaliser autour de 0
-          const shadowDist = b.depth * 0.8;
-          ctx.shadowColor = 'rgba(0,0,0,' + (0.3 + b.depth * 0.02) + ')';
-          ctx.shadowBlur = b.blur * 2;
-          ctx.shadowOffsetX = Math.cos(shadowAngle + Math.PI) * shadowDist;
-          ctx.shadowOffsetY = Math.sin(shadowAngle + Math.PI) * shadowDist;
-      }
-
-      // GESTION SPÉCIFIQUE POUR LES FORMES IMG
-      if (s.type === 'img' && s.imgSrc) {
-          const img = getCachedFormeImg(s.imgSrc);
-          if (img && img.complete && img.naturalWidth > 0) {
-              // Appliquer rotation
-              if (s.rotation && s.rotation !== 0) {
-                const centerX = s.x + s.w / 2;
-                const centerY = s.y + s.h / 2;
-                ctx.translate(centerX, centerY);
-                ctx.rotate((s.rotation * Math.PI) / 180);
-                ctx.translate(-centerX, -centerY);
-              }
-
-              // Gestion de la colorisation via Canvas temporaire
-              if (s.imgOptions && s.imgOptions.colorize) {
-                  // Redimensionner le canvas temporaire si nécessaire
-                  if (formeImgTempCanvas.width < Math.abs(s.w) || formeImgTempCanvas.height < Math.abs(s.h)) {
-                      formeImgTempCanvas.width = Math.max(formeImgTempCanvas.width, Math.abs(s.w));
-                      formeImgTempCanvas.height = Math.max(formeImgTempCanvas.height, Math.abs(s.h));
-                  }
-                  
-                  // Nettoyer la zone utilisée
-                  formeImgTempCtx.clearRect(0, 0, Math.abs(s.w), Math.abs(s.h));
-                  
-                  // Dessiner l'image originale
-                  formeImgTempCtx.save();
-                  formeImgTempCtx.drawImage(img, 0, 0, Math.abs(s.w), Math.abs(s.h));
-                  
-                  // Appliquer la couleur
-                  formeImgTempCtx.globalCompositeOperation = 'source-in';
-                  formeImgTempCtx.fillStyle = s.imgOptions.color || '#000000';
-                  formeImgTempCtx.fillRect(0, 0, Math.abs(s.w), Math.abs(s.h));
-                  
-                  // Restaurer
-                  formeImgTempCtx.restore();
-                  
-                  // Dessiner le résultat sur le canvas principal
-                  // Gérer les dimensions négatives (flip)
-                  ctx.save();
-                  ctx.translate(s.x + (s.w < 0 ? s.w : 0), s.y + (s.h < 0 ? s.h : 0)); // Position top-left réelle
-                  // Si w ou h négatif, on a déjà géré la position, mais drawImage attend w/h positifs ou on scale
-                  // Ici on dessine le temp canvas qui est toujours positif
-                  // Si on veut supporter le flip, il faut scale(-1, 1) etc.
-                  if (s.w < 0) { ctx.translate(Math.abs(s.w), 0); ctx.scale(-1, 1); }
-                  if (s.h < 0) { ctx.translate(0, Math.abs(s.h)); ctx.scale(1, -1); }
-                  
-                  ctx.drawImage(formeImgTempCanvas, 0, 0, Math.abs(s.w), Math.abs(s.h), 0, 0, Math.abs(s.w), Math.abs(s.h));
-                  ctx.restore();
-
-              } else {
-                  // Dessin direct sans colorisation
-                  ctx.drawImage(img, s.x, s.y, s.w, s.h);
-              }
-          } else {
-              // Placeholder si image pas chargée
-              ctx.strokeStyle = '#ccc';
-              ctx.setLineDash([5, 5]);
-              ctx.strokeRect(s.x, s.y, s.w, s.h);
-              ctx.setLineDash([]);
-              ctx.fillStyle = '#999';
-              ctx.font = '10px Arial';
-              ctx.fillText('Loading...', s.x + 5, s.y + 15);
-          }
-          ctx.restore();
-          return; // Fin pour shape-img
-      }
-
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
       
@@ -4373,48 +2657,13 @@ document.addEventListener('keydown', (e) => {
       // Appliquer style de forme si défini
       const shapeStyle = s.shapeStyle || 'flat-fill';
       
-      const drawContent = () => {
       try {
         ctx.beginPath();
         
-        // GESTION DES ICÔNES (FONT AWESOME & TEXTE)
-        if (SHAPE_ICONS[s.type]) {
-            const iconChar = SHAPE_ICONS[s.type];
-            ctx.save();
-            // Centrer et adapter la taille
-            ctx.font = `900 ${Math.min(s.w, s.h)}px "Font Awesome 5 Free", Arial`;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            
-            const cx = s.x + s.w/2;
-            const cy = s.y + s.h/2;
-            
-            if (s.outlineOnly) {
-                ctx.strokeStyle = finalColor;
-                ctx.lineWidth = s.outlineThickness || 1;
-                ctx.strokeText(iconChar, cx, cy);
-            } else {
-                ctx.fillStyle = finalColor;
-                ctx.fillText(iconChar, cx, cy);
-            }
-            
-            // Appliquer les styles artistiques sur le texte (si supporté par applyShapeStyleToPath, sinon ignoré)
-            // Note: applyShapeStyleToPath fonctionne sur le path courant, or fillText ne crée pas de path.
-            // Pour les styles avancés sur texte, il faudrait convertir en path (impossible en canvas standard)
-            // ou utiliser des effets de shadow/filter.
-            
-            ctx.restore();
-            ctx.restore();
-            return;
-        }
-
         if(s.type==='rectangle') {
           if (s.borderRadius && s.borderRadius > 0) {
-            // Rectangle avec border radius - Normalisation nécessaire pour drawRoundedRect
-            let rx = s.x, ry = s.y, rw = s.w, rh = s.h;
-            if (rw < 0) { rx += rw; rw = -rw; }
-            if (rh < 0) { ry += rh; rh = -rh; }
-            drawRoundedRect(ctx, rx, ry, rw, rh, s.borderRadius);
+            // Rectangle avec border radius
+            drawRoundedRect(ctx, s.x, s.y, s.w, s.h, s.borderRadius);
           } else {
             // Rectangle normal
             ctx.rect(s.x, s.y, s.w, s.h);
@@ -4743,135 +2992,10 @@ document.addEventListener('keydown', (e) => {
           if (s.outlineOnly) { ctx.strokeStyle = finalColor; ctx.lineWidth = s.outlineThickness || 1; ctx.stroke(); } 
           else { ctx.fillStyle = finalColor; ctx.fill(); }
         }
-        // 5 NOUVELLES FORMES (RED)
-        else if(s.type==='spiral-galaxy'){
-             drawSpiralGalaxy(ctx, s.x + s.w/2, s.y + s.h/2, Math.min(s.w, s.h)/2, finalColor);
-        }
-        else if(s.type==='tornado'){
-             drawTornado(ctx, s.x + s.w/2, s.y + s.h/2, s.w, s.h, finalColor);
-        }
-        else if(s.type==='dna-helix'){
-             drawDNAHelix(ctx, s.x, s.y, s.w, s.h, finalColor);
-        }
-        else if(s.type==='atom'){
-             drawAtom(ctx, s.x + s.w/2, s.y + s.h/2, Math.min(s.w, s.h)/2, finalColor);
-        }
-        else if(s.type==='sacred-geometry'){
-             drawSacredGeometry(ctx, s.x + s.w/2, s.y + s.h/2, Math.min(s.w, s.h)/2, finalColor);
-        }
-        // NOUVELLES FORMES GÉOMÉTRIQUES MANQUANTES
-        else if(s.type==='right-triangle'){
-            ctx.moveTo(s.x, s.y);
-            ctx.lineTo(s.x, s.y + s.h);
-            ctx.lineTo(s.x + s.w, s.y + s.h);
-            ctx.closePath();
-            applyShapeStyleToPath(ctx, shapeStyle, finalColor, s);
-        }
-        else if(s.type==='equilateral'){
-            ctx.moveTo(s.x + s.w/2, s.y);
-            ctx.lineTo(s.x + s.w, s.y + s.h);
-            ctx.lineTo(s.x, s.y + s.h);
-            ctx.closePath();
-            applyShapeStyleToPath(ctx, shapeStyle, finalColor, s);
-        }
-        else if(s.type==='semicircle'){
-            ctx.arc(s.x + s.w/2, s.y + s.h, s.w/2, Math.PI, 0);
-            ctx.closePath();
-            applyShapeStyleToPath(ctx, shapeStyle, finalColor, s);
-        }
-        else if(s.type==='ring'){
-            ctx.arc(s.x + s.w/2, s.y + s.h/2, s.w/2, 0, Math.PI*2);
-            ctx.arc(s.x + s.w/2, s.y + s.h/2, s.w/4, 0, Math.PI*2, true); // Trou
-            applyShapeStyleToPath(ctx, shapeStyle, finalColor, s);
-        }
-        else if(s.type==='pill' || s.type==='stadium'){
-            const r = Math.min(s.w, s.h) / 2;
-            ctx.roundRect(s.x, s.y, s.w, s.h, r);
-            applyShapeStyleToPath(ctx, shapeStyle, finalColor, s);
-        }
-        else if(s.type==='chevron-up'){
-            ctx.moveTo(s.x, s.y + s.h);
-            ctx.lineTo(s.x + s.w/2, s.y);
-            ctx.lineTo(s.x + s.w, s.y + s.h);
-            ctx.lineTo(s.x + s.w/2, s.y + s.h/2);
-            ctx.closePath();
-            applyShapeStyleToPath(ctx, shapeStyle, finalColor, s);
-        }
-        else if(s.type==='chevron-down'){
-            ctx.moveTo(s.x, s.y);
-            ctx.lineTo(s.x + s.w/2, s.y + s.h);
-            ctx.lineTo(s.x + s.w, s.y);
-            ctx.lineTo(s.x + s.w/2, s.y + s.h/2);
-            ctx.closePath();
-            applyShapeStyleToPath(ctx, shapeStyle, finalColor, s);
-        }
-        else if(s.type==='wave'){
-            ctx.moveTo(s.x, s.y + s.h/2);
-            for(let i=0; i<=s.w; i+=10) {
-                ctx.lineTo(s.x + i, s.y + s.h/2 + Math.sin(i/20)*s.h/4);
-            }
-            ctx.strokeStyle = finalColor;
-            ctx.lineWidth = s.outlineThickness || 2;
-            ctx.stroke();
-        }
-        else if(s.type==='zigzag'){
-            ctx.moveTo(s.x, s.y + s.h/2);
-            for(let i=0; i<=s.w; i+=20) {
-                ctx.lineTo(s.x + i, s.y + s.h/2 + (i%40===0 ? -s.h/4 : s.h/4));
-            }
-            ctx.strokeStyle = finalColor;
-            ctx.lineWidth = s.outlineThickness || 2;
-            ctx.stroke();
-        }
-        else if(s.type==='shape-img'){
-          if (s.imgSrc) {
-             if (!s.imgObj) {
-                 s.imgObj = new Image();
-                 s.imgObj.src = s.imgSrc;
-             }
-             if (s.imgObj.complete) {
-                 // GESTION COLORISATION
-                 if (s.imgOptions && s.imgOptions.colorize) {
-                     // Créer un canvas temporaire pour le traitement
-                     const tempCanvas = document.createElement('canvas');
-                     tempCanvas.width = Math.abs(s.w);
-                     tempCanvas.height = Math.abs(s.h);
-                     const tCtx = tempCanvas.getContext('2d');
-                     
-                     // 1. Dessiner l'image originale
-                     tCtx.drawImage(s.imgObj, 0, 0, tempCanvas.width, tempCanvas.height);
-                     
-                     // 2. Appliquer la couleur en mode "source-atop" (teinte les pixels opaques)
-                     tCtx.globalCompositeOperation = 'source-atop';
-                     tCtx.fillStyle = s.imgOptions.color || '#ff0000';
-                     tCtx.globalAlpha = s.imgOptions.intensity !== undefined ? s.imgOptions.intensity : 0.5;
-                     tCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
-                     
-                     // Réinitialiser alpha
-                     tCtx.globalAlpha = 1.0;
-                     
-                     // Dessiner le résultat sur le canvas principal
-                     ctx.drawImage(tempCanvas, s.x, s.y, s.w, s.h);
-                 } else {
-                     ctx.drawImage(s.imgObj, s.x, s.y, s.w, s.h);
-                 }
-             } else {
-                 s.imgObj.onload = () => { if(window.redrawAll) window.redrawAll(); };
-             }
-          }
-        }
       } catch(e) {
         console.warn('Erreur lors du dessin de la forme:', e, s);
       }
-      };
       
-      drawContent();
-      
-      // NEW: Apply Advanced Effects Post (Bevel, Reflection)
-      if (s.advancedEffect && window.drawAdvancedEffectPost) {
-          window.drawAdvancedEffectPost(ctx, s.advancedEffect, s.x, s.y, s.w, s.h, drawContent);
-      }
-
       ctx.restore(); // Restaurer l'état du contexte
     }
 
@@ -4901,15 +3025,6 @@ document.addEventListener('keydown', (e) => {
         const stroke = drawingStrokes[i];
         if (isPointInDrawingStroke(x, y, stroke)) {
           return { type: 'drawing', index: i, element: stroke };
-        }
-      }
-      
-      // **NOUVEAU: Vérifier les textes**
-      for (let i = textElements.length - 1; i >= 0; i--) {
-        const txt = textElements[i];
-        if (x >= txt.x && x <= txt.x + (txt.width || 100) && 
-            y >= txt.y && y <= txt.y + (txt.height || txt.fontSize || 24)) {
-          return { type: 'text', index: i, element: txt };
         }
       }
       
@@ -5067,53 +3182,6 @@ document.addEventListener('keydown', (e) => {
       }
     }
 
-    // Mettre à jour l'UI de texture depuis l'élément
-    function updateTextureUIFromElement(element) {
-        if (!element) return;
-        
-        // Si l'élément n'a pas de texture, on ne change pas l'UI ou on la désactive ?
-        // Pour l'instant, on ne met à jour que si une texture est définie
-        if (element.texture) {
-            const tex = element.texture;
-            window.textureOptions = JSON.parse(JSON.stringify(tex));
-            
-            const setVal = (id, val) => {
-                const el = document.getElementById(id);
-                if (el) {
-                    if (el.type === 'checkbox') el.checked = val;
-                    else el.value = val;
-                }
-            };
-            
-            setVal('textureEnabled', tex.enabled);
-            setVal('textureSource', tex.source || 'pattern');
-            setVal('texturePatternId', tex.patternId || 1);
-            setVal('textureBlendMode', tex.blendMode || 'source-over');
-            setVal('textureOpacity', tex.opacity !== undefined ? tex.opacity : 100);
-            setVal('textureScale', tex.scale !== undefined ? tex.scale : 100);
-            setVal('textureAngle', tex.angle || 0);
-            setVal('textureSpacing', tex.spacing || 10);
-            setVal('textureScatter', tex.scatter || 0);
-            
-            // Mise à jour visuelle de la grille
-            const gridDivs = document.querySelectorAll('#textureGrid > div');
-            gridDivs.forEach(div => div.classList.remove('border-blue-500', 'bg-[#333]'));
-            
-            if (tex.filename) {
-                gridDivs.forEach(div => {
-                    if (div.innerHTML.includes(tex.filename)) {
-                        div.classList.add('border-blue-500', 'bg-[#333]');
-                    }
-                });
-            } else if (tex.patternId) {
-                 // Fallback si pas de filename
-                 if (gridDivs[tex.patternId - 1]) {
-                     gridDivs[tex.patternId - 1].classList.add('border-blue-500', 'bg-[#333]');
-                 }
-            }
-        }
-    }
-
     function selectElement(elementInfo) {
       selectedElement = elementInfo.element;
       selectedElementIndex = elementInfo.index;
@@ -5124,17 +3192,11 @@ document.addEventListener('keydown', (e) => {
       if (selectedElementType === 'drawing') {
         // Pour les dessins, utiliser le système existant selectedDrawingStrokeId
         selectedDrawingStrokeId = elementInfo.element.id;
-        selectedImageIndex = -1; // Réinitialiser
         // Mettre à jour les contrôles de style
         updateBrushStyleControlsFromElement(selectedElement);
-      } else if (selectedElementType === 'image') {
-        // Pour les images, synchroniser avec selectedImageIndex
-        selectedImageIndex = elementInfo.index;
-        selectedDrawingStrokeId = null;
       } else {
-        // Réinitialiser la sélection de dessin et image si on sélectionne autre chose
+        // Réinitialiser la sélection de dessin si on sélectionne autre chose
         selectedDrawingStrokeId = null;
-        selectedImageIndex = -1;
       }
       
       // Afficher le panneau de style artistique pour les formes
@@ -5149,9 +3211,6 @@ document.addEventListener('keydown', (e) => {
       // Maintenant on affiche les poignées et l'UI pour TOUS les types, y compris les dessins
       drawSelectionHandles();
       drawSelectionUI();
-      
-      // Mettre à jour le panneau de texture
-      updateTextureUIFromElement(selectedElement);
     }
 
     // Fonction pour désélectionner
@@ -5308,20 +3367,13 @@ document.addEventListener('keydown', (e) => {
         };
       } else if (selectedElementType === 'image') {
         bounds = {
-          x: selectedElement.x || 0,
-          y: selectedElement.y || 0,
+          x: selectedElement.x,
+          y: selectedElement.y,
           w: selectedElement.width,
           h: selectedElement.height
         };
       } else if (selectedElementType === 'drawing') {
         bounds = getDrawingBounds(selectedElement);
-      } else if (selectedElementType === 'text') {
-        bounds = {
-          x: selectedElement.x,
-          y: selectedElement.y,
-          w: selectedElement.width || 100,
-          h: selectedElement.height || selectedElement.fontSize || 24
-        };
       }
       
       if (!bounds) return null;
@@ -5405,38 +3457,14 @@ document.addEventListener('keydown', (e) => {
       }
       
       const canvasRect = canvas.getBoundingClientRect();
-      const z = window.zoomLevel || 1;
-      const offX = window.canvasOffset?.x || 0;
-      const offY = window.canvasOffset?.y || 0;
+      const panelX = canvasRect.left + bounds.x + bounds.w + 10;
+      const panelY = canvasRect.top + bounds.y;
       
-      // Ratio entre la taille affichée et la taille interne du canvas
-      const scaleX = canvasRect.width / canvas.width;
-      const scaleY = canvasRect.height / canvas.height;
-      
-      // Calculer la position écran du centre-haut de l'élément
-      const elementCenterX = bounds.x + bounds.w / 2;
-      const elementTopY = bounds.y;
-      const screenCenterX = canvasRect.left + ((elementCenterX * z + offX) * scaleX);
-      const screenTopY = canvasRect.top + ((elementTopY * z + offY) * scaleY);
-      
-      // Positionner temporairement pour obtenir la largeur
+      selectionPanel.style.left = panelX + 'px';
+      selectionPanel.style.top = panelY + 'px';
       selectionPanel.style.display = 'flex';
-      selectionPanel.style.visibility = 'hidden';
-      const panelWidth = selectionPanel.offsetWidth || 200;
-      const panelHeight = selectionPanel.offsetHeight || 40;
-      selectionPanel.style.visibility = 'visible';
-      
-      // Centrer au-dessus de l'élément
-      const panelX = screenCenterX - panelWidth / 2;
-      const panelY = screenTopY - panelHeight - 10;
-      
-      selectionPanel.style.left = Math.max(0, panelX) + 'px';
-      selectionPanel.style.top = Math.max(0, panelY) + 'px';
       
       selectionPanel.innerHTML = `
-        <button id="spMoveBtn" class="p-1 hover:bg-gray-700 rounded cursor-move" title="Déplacer (maintenir cliqué)">
-          ✥
-        </button>
         <button onclick="cutSelectedElement()" class="p-1 hover:bg-gray-700 rounded" title="Couper">
           ✂️
         </button>
@@ -5450,200 +3478,19 @@ document.addEventListener('keydown', (e) => {
           ⚙️
         </button>
         <div class="relative inline-block">
-          <button onclick="toggleRotationPopup()" class="p-1 hover:bg-gray-700 rounded" title="Rotation & 3D">
+          <button onclick="toggleRotationPopup()" class="p-1 hover:bg-gray-700 rounded" title="Rotation">
             🔄
           </button>
-          <div id="rotationPopup" class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden bg-gray-800 p-3 rounded-lg shadow-lg border border-gray-600 z-50" style="width: 320px; max-height: 500px; overflow-y: auto;">
-            <!-- Onglets -->
-            <div class="flex border-b border-gray-600 mb-3">
-              <button id="tabRotation" onclick="switchRotationTab('rotation')" class="flex-1 py-2 text-xs font-medium text-blue-400 border-b-2 border-blue-400">🔄 Rotation</button>
-              <button id="tabBevel" onclick="switchRotationTab('bevel')" class="flex-1 py-2 text-xs font-medium text-gray-400 hover:text-gray-200">✨ Bevel 3D</button>
-            </div>
-            
-            <!-- Onglet Rotation -->
-            <div id="panelRotation" class="tab-content">
-              <div class="text-xs text-center mb-1">Rotation: <span id="rotationValueDisplay">0</span>°</div>
-              <input type="range" min="0" max="360" value="0" class="w-full mb-2" oninput="updateElementRotation(this.value)">
-              <div class="flex justify-between gap-2">
+          <div id="rotationPopup" class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden bg-gray-800 p-2 rounded shadow-lg border border-gray-600 w-48 z-50">
+            <div class="text-xs text-center mb-1">Rotation: <span id="rotationValueDisplay">0</span>°</div>
+            <input type="range" min="0" max="360" value="0" class="w-full mb-2" oninput="updateElementRotation(this.value)">
+            <div class="flex justify-between gap-2">
                 <button onclick="cancelRotation()" class="flex-1 text-red-500 hover:text-red-400 text-xs px-2 py-1 border border-red-500 rounded bg-transparent">✕ Annuler</button>
                 <button onclick="validateRotation()" class="flex-1 text-green-500 hover:text-green-400 text-xs px-2 py-1 border border-green-500 rounded bg-transparent">✓ Valider</button>
-              </div>
-            </div>
-            
-            <!-- Onglet Bevel 3D -->
-            <div id="panelBevel" class="tab-content hidden">
-              <!-- Enable Bevel -->
-              <div class="mb-3">
-                <label class="flex items-center gap-2 text-xs">
-                  <input type="checkbox" id="bevelEnabled" onchange="updateBevelEffect()">
-                  <span>Activer Bevel 3D</span>
-                </label>
-              </div>
-              
-              <!-- Profondeur -->
-              <div class="mb-2">
-                <label class="text-xs text-gray-400 block mb-1">Profondeur (surfaceScale)</label>
-                <div class="flex items-center gap-2">
-                  <input type="range" min="1" max="20" value="6" id="bevelDepth" class="flex-1" oninput="updateBevelEffect()">
-                  <span class="text-xs w-8 text-right" id="bevelDepthVal">6</span>
-                </div>
-              </div>
-              
-              <!-- Blur -->
-              <div class="mb-2">
-                <label class="text-xs text-gray-400 block mb-1">Blur (détail)</label>
-                <div class="flex items-center gap-2">
-                  <input type="range" min="1" max="12" value="4" id="bevelBlur" class="flex-1" oninput="updateBevelEffect()">
-                  <span class="text-xs w-8 text-right" id="bevelBlurVal">4</span>
-                </div>
-              </div>
-              
-              <!-- Specular 1 -->
-              <div class="mb-2">
-                <label class="text-xs text-gray-400 block mb-1">Specular (brillance)</label>
-                <div class="flex items-center gap-2">
-                  <input type="range" min="0" max="2" step="0.05" value="0.9" id="bevelSpec1" class="flex-1" oninput="updateBevelEffect()">
-                  <span class="text-xs w-8 text-right" id="bevelSpec1Val">0.9</span>
-                </div>
-              </div>
-              
-              <!-- Specular 2 -->
-              <div class="mb-2">
-                <label class="text-xs text-gray-400 block mb-1">Specular Layer 2</label>
-                <div class="flex items-center gap-2">
-                  <input type="range" min="0" max="2" step="0.05" value="0.5" id="bevelSpec2" class="flex-1" oninput="updateBevelEffect()">
-                  <span class="text-xs w-8 text-right" id="bevelSpec2Val">0.5</span>
-                </div>
-              </div>
-              
-              <!-- Type de lumière -->
-              <div class="mb-2">
-                <label class="text-xs text-gray-400 block mb-1">Type de lumière</label>
-                <select id="bevelLightType" class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs" onchange="updateBevelEffect()">
-                  <option value="point">PointLight</option>
-                  <option value="directional">DirectionalLight</option>
-                  <option value="spot">SpotLight</option>
-                </select>
-              </div>
-              
-              <!-- Couleur lumière -->
-              <div class="mb-2">
-                <label class="text-xs text-gray-400 block mb-1">Couleur lumière</label>
-                <input type="color" id="bevelLightColor" value="#ffffff" class="w-full h-8 rounded" onchange="updateBevelEffect()">
-              </div>
-              
-              <!-- Position lumière X -->
-              <div class="mb-2">
-                <label class="text-xs text-gray-400 block mb-1">Position lumière X</label>
-                <div class="flex items-center gap-2">
-                  <input type="range" min="-200" max="200" value="-40" id="bevelLightX" class="flex-1" oninput="updateBevelEffect()">
-                  <span class="text-xs w-8 text-right" id="bevelLightXVal">-40</span>
-                </div>
-              </div>
-              
-              <!-- Position lumière Y -->
-              <div class="mb-2">
-                <label class="text-xs text-gray-400 block mb-1">Position lumière Y</label>
-                <div class="flex items-center gap-2">
-                  <input type="range" min="-200" max="200" value="-40" id="bevelLightY" class="flex-1" oninput="updateBevelEffect()">
-                  <span class="text-xs w-8 text-right" id="bevelLightYVal">-40</span>
-                </div>
-              </div>
-              
-              <!-- Boutons validation -->
-              <div class="flex justify-between gap-2 mt-3 pt-2 border-t border-gray-600">
-                <button onclick="cancelBevel()" class="flex-1 text-red-500 hover:text-red-400 text-xs px-2 py-1 border border-red-500 rounded bg-transparent">✕ Annuler</button>
-                <button onclick="validateBevel()" class="flex-1 text-green-500 hover:text-green-400 text-xs px-2 py-1 border border-green-500 rounded bg-transparent">✓ Valider</button>
-              </div>
             </div>
           </div>
         </div>
       `;
-      
-      // Ajouter le handler pour le bouton de déplacement
-      setTimeout(() => {
-        const moveBtn = document.getElementById('spMoveBtn');
-        if (moveBtn && selectedElement) {
-          let isDraggingFromPanel = false;
-          let panelDragOffset = { x: 0, y: 0 };
-          
-          moveBtn.addEventListener('mousedown', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            isDraggingFromPanel = true;
-            
-            // Calculer l'offset initial
-            const canvasRect = canvas.getBoundingClientRect();
-            const z = window.zoomLevel || 1;
-            const offX = window.canvasOffset?.x || 0;
-            const offY = window.canvasOffset?.y || 0;
-            const scaleX = canvasRect.width / canvas.width;
-            const scaleY = canvasRect.height / canvas.height;
-            const canvasX = ((e.clientX - canvasRect.left) / scaleX - offX) / z;
-            const canvasY = ((e.clientY - canvasRect.top) / scaleY - offY) / z;
-            
-            if (selectedElementType === 'shape') {
-              panelDragOffset.x = canvasX - selectedElement.x;
-              panelDragOffset.y = canvasY - selectedElement.y;
-            } else if (selectedElementType === 'image') {
-              panelDragOffset.x = canvasX - (selectedElement.x || 0);
-              panelDragOffset.y = canvasY - (selectedElement.y || 0);
-            } else if (selectedElementType === 'text') {
-              panelDragOffset.x = canvasX - selectedElement.x;
-              panelDragOffset.y = canvasY - selectedElement.y;
-            } else if (selectedElementType === 'drawing') {
-              const bounds = getDrawingBounds(selectedElement);
-              panelDragOffset.x = canvasX - bounds.x;
-              panelDragOffset.y = canvasY - bounds.y;
-            }
-          });
-          
-          document.addEventListener('mousemove', (e) => {
-            if (!isDraggingFromPanel || !selectedElement) return;
-            
-            const canvasRect = canvas.getBoundingClientRect();
-            const z = window.zoomLevel || 1;
-            const offX = window.canvasOffset?.x || 0;
-            const offY = window.canvasOffset?.y || 0;
-            const scaleX = canvasRect.width / canvas.width;
-            const scaleY = canvasRect.height / canvas.height;
-            const canvasX = ((e.clientX - canvasRect.left) / scaleX - offX) / z;
-            const canvasY = ((e.clientY - canvasRect.top) / scaleY - offY) / z;
-            
-            const newX = canvasX - panelDragOffset.x;
-            const newY = canvasY - panelDragOffset.y;
-            
-            if (selectedElementType === 'shape') {
-              selectedElement.x = newX;
-              selectedElement.y = newY;
-            } else if (selectedElementType === 'image') {
-              selectedElement.x = newX;
-              selectedElement.y = newY;
-            } else if (selectedElementType === 'text') {
-              selectedElement.x = newX;
-              selectedElement.y = newY;
-            } else if (selectedElementType === 'drawing') {
-              // Déplacer tous les points du stroke
-              const bounds = getDrawingBounds(selectedElement);
-              const deltaX = newX - bounds.x;
-              const deltaY = newY - bounds.y;
-              if (selectedElement.points) {
-                selectedElement.points.forEach(p => {
-                  p.x += deltaX;
-                  p.y += deltaY;
-                });
-              }
-            }
-            
-            redrawAll();
-            updateSelectionControls();
-          });
-          
-          document.addEventListener('mouseup', () => {
-            isDraggingFromPanel = false;
-          });
-        }
-      }, 50);
       
       // Initialize rotation slider value
       setTimeout(() => {
@@ -5662,48 +3509,6 @@ document.addEventListener('keydown', (e) => {
           display.textContent = Math.round(currentRotation);
         }
       }, 0);
-    }
-
-    // Fonction pour mettre à jour la position du panneau de sélection
-    function updateSelectionControls() {
-      if (!isElementSelected || !selectedElement) return;
-      
-      const selectionPanel = document.getElementById('selectionPanel');
-      if (!selectionPanel || selectionPanel.style.display === 'none') return;
-      
-      let bounds = null;
-      if (selectedElementType === 'shape') {
-        bounds = { x: selectedElement.x, y: selectedElement.y, w: selectedElement.w, h: selectedElement.h };
-      } else if (selectedElementType === 'drawing') {
-        bounds = getDrawingBounds(selectedElement);
-      } else if (selectedElementType === 'image') {
-        bounds = { x: selectedElement.x || 0, y: selectedElement.y || 0, w: selectedElement.width, h: selectedElement.height };
-      } else if (selectedElementType === 'text') {
-        bounds = { x: selectedElement.x, y: selectedElement.y, w: selectedElement.width || 100, h: selectedElement.height || selectedElement.fontSize || 24 };
-      }
-      
-      if (!bounds) return;
-      
-      const canvasRect = canvas.getBoundingClientRect();
-      const z = window.zoomLevel || 1;
-      const offX = window.canvasOffset?.x || 0;
-      const offY = window.canvasOffset?.y || 0;
-      const scaleX = canvasRect.width / canvas.width;
-      const scaleY = canvasRect.height / canvas.height;
-      
-      const elementCenterX = bounds.x + bounds.w / 2;
-      const elementTopY = bounds.y;
-      const screenCenterX = canvasRect.left + ((elementCenterX * z + offX) * scaleX);
-      const screenTopY = canvasRect.top + ((elementTopY * z + offY) * scaleY);
-      
-      const panelWidth = selectionPanel.offsetWidth || 200;
-      const panelHeight = selectionPanel.offsetHeight || 40;
-      
-      const panelX = screenCenterX - panelWidth / 2;
-      const panelY = screenTopY - panelHeight - 10;
-      
-      selectionPanel.style.left = Math.max(0, panelX) + 'px';
-      selectionPanel.style.top = Math.max(0, panelY) + 'px';
     }
 
     let initialRotation = 0;
@@ -5749,8 +3554,6 @@ document.addEventListener('keydown', (e) => {
         selectedElement.rotation = angle;
       } else if (selectedElementType === 'image') {
         selectedElement.rotation = angle;
-      } else if (selectedElementType === 'text') {
-        selectedElement.rotation = angle;
       } else if (selectedElementType === 'drawing') {
          const prevAngle = selectedElement.rotation || 0;
          const delta = angle - prevAngle;
@@ -5774,233 +3577,6 @@ document.addEventListener('keydown', (e) => {
       redrawAll();
       drawSelectionHandles();
     };
-
-    // ============ BEVEL 3D SYSTEM ============
-    let initialBevelState = null;
-    
-    // Fonction de changement d'onglet dans la popup
-    window.switchRotationTab = function(tab) {
-      const tabRotation = document.getElementById('tabRotation');
-      const tabBevel = document.getElementById('tabBevel');
-      const panelRotation = document.getElementById('panelRotation');
-      const panelBevel = document.getElementById('panelBevel');
-      
-      if (tab === 'rotation') {
-        tabRotation.classList.add('text-blue-400', 'border-b-2', 'border-blue-400');
-        tabRotation.classList.remove('text-gray-400');
-        tabBevel.classList.remove('text-blue-400', 'border-b-2', 'border-blue-400');
-        tabBevel.classList.add('text-gray-400');
-        panelRotation.classList.remove('hidden');
-        panelBevel.classList.add('hidden');
-      } else {
-        tabBevel.classList.add('text-blue-400', 'border-b-2', 'border-blue-400');
-        tabBevel.classList.remove('text-gray-400');
-        tabRotation.classList.remove('text-blue-400', 'border-b-2', 'border-blue-400');
-        tabRotation.classList.add('text-gray-400');
-        panelBevel.classList.remove('hidden');
-        panelRotation.classList.add('hidden');
-        
-        // Load current bevel values from element
-        loadBevelFromElement();
-      }
-    };
-    
-    // Charger les valeurs bevel depuis l'élément sélectionné
-    function loadBevelFromElement() {
-      if (!selectedElement) return;
-      
-      const bevel = selectedElement.bevel || {
-        enabled: false,
-        depth: 6,
-        blur: 4,
-        spec1: 0.9,
-        spec2: 0.5,
-        lightType: 'point',
-        lightColor: '#ffffff',
-        lightX: -40,
-        lightY: -40
-      };
-      
-      // Store initial state for cancel
-      initialBevelState = JSON.parse(JSON.stringify(bevel));
-      
-      document.getElementById('bevelEnabled').checked = bevel.enabled || false;
-      document.getElementById('bevelDepth').value = bevel.depth || 6;
-      document.getElementById('bevelDepthVal').textContent = bevel.depth || 6;
-      document.getElementById('bevelBlur').value = bevel.blur || 4;
-      document.getElementById('bevelBlurVal').textContent = bevel.blur || 4;
-      document.getElementById('bevelSpec1').value = bevel.spec1 || 0.9;
-      document.getElementById('bevelSpec1Val').textContent = bevel.spec1 || 0.9;
-      document.getElementById('bevelSpec2').value = bevel.spec2 || 0.5;
-      document.getElementById('bevelSpec2Val').textContent = bevel.spec2 || 0.5;
-      document.getElementById('bevelLightType').value = bevel.lightType || 'point';
-      document.getElementById('bevelLightColor').value = bevel.lightColor || '#ffffff';
-      document.getElementById('bevelLightX').value = bevel.lightX || -40;
-      document.getElementById('bevelLightXVal').textContent = bevel.lightX || -40;
-      document.getElementById('bevelLightY').value = bevel.lightY || -40;
-      document.getElementById('bevelLightYVal').textContent = bevel.lightY || -40;
-    }
-    
-    // Mettre à jour l'effet bevel en temps réel
-    window.updateBevelEffect = function() {
-      if (!selectedElement) return;
-      
-      const enabled = document.getElementById('bevelEnabled').checked;
-      const depth = parseFloat(document.getElementById('bevelDepth').value);
-      const blur = parseFloat(document.getElementById('bevelBlur').value);
-      const spec1 = parseFloat(document.getElementById('bevelSpec1').value);
-      const spec2 = parseFloat(document.getElementById('bevelSpec2').value);
-      const lightType = document.getElementById('bevelLightType').value;
-      const lightColor = document.getElementById('bevelLightColor').value;
-      const lightX = parseFloat(document.getElementById('bevelLightX').value);
-      const lightY = parseFloat(document.getElementById('bevelLightY').value);
-      
-      // Update display values
-      document.getElementById('bevelDepthVal').textContent = depth;
-      document.getElementById('bevelBlurVal').textContent = blur;
-      document.getElementById('bevelSpec1Val').textContent = spec1;
-      document.getElementById('bevelSpec2Val').textContent = spec2;
-      document.getElementById('bevelLightXVal').textContent = lightX;
-      document.getElementById('bevelLightYVal').textContent = lightY;
-      
-      // Store in element
-      selectedElement.bevel = {
-        enabled: enabled,
-        depth: depth,
-        blur: blur,
-        spec1: spec1,
-        spec2: spec2,
-        lightType: lightType,
-        lightColor: lightColor,
-        lightX: lightX,
-        lightY: lightY
-      };
-      
-      // Update SVG filter
-      updateBevelSVGFilter(selectedElement);
-      
-      // Redraw
-      redrawAll();
-      drawSelectionHandles();
-    };
-    
-    // Générer le filtre SVG pour un élément
-    function updateBevelSVGFilter(element) {
-      if (!element || !element.bevel || !element.bevel.enabled) return;
-      
-      const b = element.bevel;
-      const filterId = 'bevelFilter_' + (element.id || Math.random().toString(36).substr(2, 9));
-      element.bevelFilterId = filterId;
-      
-      // Créer ou mettre à jour le filtre SVG
-      let svgDefs = document.getElementById('bevelSvgDefs');
-      if (!svgDefs) {
-        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        svg.setAttribute('width', '0');
-        svg.setAttribute('height', '0');
-        svg.style.position = 'absolute';
-        svgDefs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
-        svgDefs.id = 'bevelSvgDefs';
-        svg.appendChild(svgDefs);
-        document.body.appendChild(svg);
-      }
-      
-      // Remove existing filter with same id
-      const existingFilter = document.getElementById(filterId);
-      if (existingFilter) existingFilter.remove();
-      
-      // Light tag based on type
-      let lightTag;
-      switch(b.lightType) {
-        case 'directional':
-          lightTag = `<feDistantLight azimuth="${b.lightX}" elevation="${b.lightY}"/>`;
-          break;
-        case 'spot':
-          lightTag = `<feSpotLight x="${b.lightX}" y="${b.lightY}" z="120" pointsAtX="0" pointsAtY="0" pointsAtZ="0"/>`;
-          break;
-        default:
-          lightTag = `<fePointLight x="${b.lightX}" y="${b.lightY}" z="120"/>`;
-      }
-      
-      const filterHTML = `
-        <filter id="${filterId}" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
-          <feMorphology in="SourceAlpha" operator="dilate" radius="0" result="morph"/>
-          <feGaussianBlur in="morph" stdDeviation="${b.blur}" result="blur"/>
-          <feDiffuseLighting in="blur" lighting-color="${b.lightColor}" surfaceScale="${b.depth}" result="diffuse">
-            ${lightTag}
-          </feDiffuseLighting>
-          <feSpecularLighting in="blur" lighting-color="${b.lightColor}" surfaceScale="${b.depth}" specularConstant="${b.spec1}" specularExponent="20" result="spec1">
-            ${lightTag}
-          </feSpecularLighting>
-          <feSpecularLighting in="blur" lighting-color="${b.lightColor}" surfaceScale="${b.depth}" specularConstant="${b.spec2}" specularExponent="40" result="spec2">
-            ${lightTag}
-          </feSpecularLighting>
-          <feComposite in="diffuse" in2="SourceAlpha" operator="in" result="d"/>
-          <feComposite in="spec1" in2="SourceAlpha" operator="in" result="s1"/>
-          <feComposite in="spec2" in2="SourceAlpha" operator="in" result="s2"/>
-          <feComposite in="d" in2="SourceGraphic" operator="arithmetic" k1="0" k2="1" k3="1" k4="0" result="base"/>
-          <feComposite in="s1" in2="base" operator="arithmetic" k1="0" k2="1" k3="1" k4="0" result="base2"/>
-          <feComposite in="s2" in2="base2" operator="arithmetic" k1="0" k2="1" k3="1" k4="0"/>
-        </filter>
-      `;
-      
-      svgDefs.insertAdjacentHTML('beforeend', filterHTML);
-    }
-    
-    // Annuler les modifications bevel
-    window.cancelBevel = function() {
-      if (selectedElement && initialBevelState) {
-        selectedElement.bevel = JSON.parse(JSON.stringify(initialBevelState));
-        if (selectedElement.bevel && selectedElement.bevel.enabled) {
-          updateBevelSVGFilter(selectedElement);
-        }
-        loadBevelFromElement();
-        redrawAll();
-        drawSelectionHandles();
-      }
-      document.getElementById('rotationPopup').classList.add('hidden');
-    };
-    
-    // Valider les modifications bevel
-    window.validateBevel = function() {
-      document.getElementById('rotationPopup').classList.add('hidden');
-      saveState();
-    };
-    
-    // Appliquer le filtre bevel à un contexte canvas
-    window.applyBevelToCanvas = function(ctx, element, drawCallback) {
-      if (!element || !element.bevel || !element.bevel.enabled) {
-        drawCallback();
-        return;
-      }
-      
-      const b = element.bevel;
-      
-      // Pour le canvas, on simule l'effet bevel avec des ombres et des highlights
-      ctx.save();
-      
-      // Effet de profondeur avec shadow
-      const shadowAngle = Math.atan2(b.lightY, b.lightX);
-      const shadowDist = b.depth * 0.5;
-      ctx.shadowColor = 'rgba(0,0,0,0.4)';
-      ctx.shadowBlur = b.blur * 2;
-      ctx.shadowOffsetX = Math.cos(shadowAngle) * shadowDist;
-      ctx.shadowOffsetY = Math.sin(shadowAngle) * shadowDist;
-      
-      drawCallback();
-      
-      ctx.restore();
-      
-      // Ajouter highlight (specular)
-      if (b.spec1 > 0) {
-        ctx.save();
-        ctx.globalCompositeOperation = 'overlay';
-        ctx.globalAlpha = b.spec1 * 0.3;
-        drawCallback();
-        ctx.restore();
-      }
-    };
-    // ============ END BEVEL 3D SYSTEM ============
 
     function hideSelectionUI() {
       const selectionPanel = document.getElementById('selectionPanel');
@@ -6034,13 +3610,6 @@ document.addEventListener('keydown', (e) => {
       
       copiedElement = JSON.parse(JSON.stringify(selectedElement));
       copiedElementType = selectedElementType;
-
-      // Sauvegarder aussi dans la bibliothèque si c'est un type supporté
-      if (typeof window.copyObjectToLibrary === 'function') {
-          if (['shape', 'text', 'image'].includes(selectedElementType)) {
-              window.copyObjectToLibrary();
-          }
-      }
     }
 
     function cutSelectedElement() {
@@ -6349,148 +3918,6 @@ document.addEventListener('keydown', (e) => {
       ctx.arc(x + width * 0.4, y + height * 0.4, height * 0.35, 0, 2 * Math.PI);
       ctx.arc(x + width * 0.6, y + height * 0.3, height * 0.4, 0, 2 * Math.PI);
       ctx.arc(x + width * 0.8, y + height * 0.6, height * 0.25, 0, 2 * Math.PI);
-    }
-
-    // --- NOUVELLES FORMES ---
-
-    function drawSpiralGalaxy(ctx, cx, cy, radius, color) {
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        // Spiral
-        const maxAngle = 10 * Math.PI; 
-        for (let i = 0; i < 200; i++) {
-            const angle = (i / 200) * maxAngle;
-            const r = (i / 200) * radius;
-            const x = cx + r * Math.cos(angle);
-            const y = cy + r * Math.sin(angle);
-            if (i === 0) ctx.moveTo(x, y);
-            else ctx.lineTo(x, y);
-        }
-        ctx.stroke();
-        
-        // Second arm
-        ctx.beginPath();
-        for (let i = 0; i < 200; i++) {
-            const angle = (i / 200) * maxAngle + Math.PI;
-            const r = (i / 200) * radius;
-            const x = cx + r * Math.cos(angle);
-            const y = cy + r * Math.sin(angle);
-            if (i === 0) ctx.moveTo(x, y);
-            else ctx.lineTo(x, y);
-        }
-        ctx.stroke();
-    }
-
-    function drawTornado(ctx, cx, cy, w, h, color) {
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        const loops = 8;
-        for (let i = 0; i < loops * 20; i++) {
-            const t = i / (loops * 20);
-            const y = cy - h/2 + t * h;
-            // Width increases as we go up (tornado shape)
-            const widthAtY = (t * w) / 2; 
-            const x = cx + widthAtY * Math.sin(i * 0.5);
-            if (i === 0) ctx.moveTo(x, y);
-            else ctx.lineTo(x, y);
-        }
-        ctx.stroke();
-    }
-
-    function drawDNAHelix(ctx, x, y, w, h, color) {
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 2;
-        const cycles = 3;
-        const points = 100;
-        
-        // Strand 1
-        ctx.beginPath();
-        for (let i = 0; i <= points; i++) {
-            const t = i / points;
-            const px = x + t * w;
-            const py = y + h/2 + (h/4) * Math.sin(t * cycles * 2 * Math.PI);
-            if (i === 0) ctx.moveTo(px, py);
-            else ctx.lineTo(px, py);
-        }
-        ctx.stroke();
-
-        // Strand 2
-        ctx.beginPath();
-        for (let i = 0; i <= points; i++) {
-            const t = i / points;
-            const px = x + t * w;
-            const py = y + h/2 + (h/4) * Math.sin(t * cycles * 2 * Math.PI + Math.PI);
-            if (i === 0) ctx.moveTo(px, py);
-            else ctx.lineTo(px, py);
-        }
-        ctx.stroke();
-        
-        // Connectors
-        ctx.lineWidth = 1;
-        for (let i = 0; i <= points; i+=5) {
-            const t = i / points;
-            const px = x + t * w;
-            const y1 = y + h/2 + (h/4) * Math.sin(t * cycles * 2 * Math.PI);
-            const y2 = y + h/2 + (h/4) * Math.sin(t * cycles * 2 * Math.PI + Math.PI);
-            ctx.beginPath();
-            ctx.moveTo(px, y1);
-            ctx.lineTo(px, y2);
-            ctx.stroke();
-        }
-    }
-
-    function drawAtom(ctx, cx, cy, radius, color) {
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 2;
-        
-        // Nucleus
-        ctx.fillStyle = color;
-        ctx.beginPath();
-        ctx.arc(cx, cy, radius/5, 0, 2*Math.PI);
-        ctx.fill();
-        
-        // Electrons orbits
-        ctx.beginPath();
-        ctx.ellipse(cx, cy, radius, radius/3, 0, 0, 2*Math.PI);
-        ctx.stroke();
-        
-        ctx.beginPath();
-        ctx.ellipse(cx, cy, radius, radius/3, Math.PI/3, 0, 2*Math.PI);
-        ctx.stroke();
-        
-        ctx.beginPath();
-        ctx.ellipse(cx, cy, radius, radius/3, -Math.PI/3, 0, 2*Math.PI);
-        ctx.stroke();
-    }
-
-    function drawSacredGeometry(ctx, cx, cy, radius, color) {
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 1;
-        
-        // Flower of Life pattern (simplified)
-        const r = radius / 3;
-        
-        // Center circle
-        ctx.beginPath();
-        ctx.arc(cx, cy, r, 0, 2*Math.PI);
-        ctx.stroke();
-        
-        // Surrounding circles
-        for (let i = 0; i < 6; i++) {
-            const angle = i * Math.PI / 3;
-            const x = cx + r * Math.cos(angle);
-            const y = cy + r * Math.sin(angle);
-            ctx.beginPath();
-            ctx.arc(x, y, r, 0, 2*Math.PI);
-            ctx.stroke();
-        }
-        
-        // Outer circle
-        ctx.beginPath();
-        ctx.arc(cx, cy, radius, 0, 2*Math.PI);
-        ctx.stroke();
     }
 
     // Helper function pour dessiner un croissant de lune
@@ -7374,25 +4801,7 @@ document.addEventListener('keydown', (e) => {
     }
 
     // FONCTION PRINCIPALE DES STYLES ARTISTIQUES PHASE 4 + OUTILS SPÉCIALISÉS
-    // Fonction de génération aléatoire déterministe (Mulberry32)
-    function createSeededRandom(seed) {
-      return function() {
-        var t = seed += 0x6D2B79F5;
-        t = Math.imul(t ^ t >>> 15, t | 1);
-        t ^= t + Math.imul(t ^ t >>> 7, t | 61);
-        return ((t ^ t >>> 14) >>> 0) / 4294967296;
-      }
-    }
-
-    function applyArtisticBrushStyle(ctx, x1, y1, x2, y2, tool, size, color, seed) {
-      // Sauvegarder Math.random original
-      const originalRandom = Math.random;
-      // Si une graine est fournie, remplacer Math.random par notre générateur déterministe
-      if (typeof seed === 'number') {
-        Math.random = createSeededRandom(seed);
-      }
-
-      try {
+    function applyArtisticBrushStyle(ctx, x1, y1, x2, y2, tool, size, color) {
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
       
@@ -7590,7 +4999,6 @@ document.addEventListener('keydown', (e) => {
         
         // Réinitialiser le filtre
         ctx.filter = 'none';
-        Math.random = originalRandom;
         return;
       }
       
@@ -7599,7 +5007,7 @@ document.addEventListener('keydown', (e) => {
       if (basicTools.includes(tool) && currentBrushStyle === 'normal') {
         // Appliquer les effets spécifiques des outils de base
         if(tool==='brush-basic'){
-          ctx.strokeStyle=color; ctx.globalAlpha=1; ctx.lineWidth=size;
+          ctx.strokeStyle=color; ctx.globalAlpha=1;
           ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
         } else if(tool==='brush-pencil'){
           ctx.strokeStyle=color; ctx.globalAlpha=0.8; ctx.lineWidth=Math.max(1,size/3);
@@ -7628,7 +5036,6 @@ document.addEventListener('keydown', (e) => {
           ctx.strokeStyle=grad; ctx.lineWidth=size*1.2;
           ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
         }
-        Math.random = originalRandom;
         return;
       }
       
@@ -8511,9 +5918,6 @@ document.addEventListener('keydown', (e) => {
       ctx.filter = 'none';
       ctx.globalCompositeOperation = 'source-over';
     }
-    } finally {
-      Math.random = originalRandom;
-    }
     }
 
     // FONCTION TEXTURES PHASE 5
@@ -9090,7 +6494,6 @@ document.addEventListener('keydown', (e) => {
 
     // Function to redraw all including imported images
     function redrawAll() {
-      window.redrawAll = redrawAll; // Ensure it's available globally
       if (!imageLoaded) return;
       
       // S'assurer que drawingLayer a la bonne taille
@@ -9110,36 +6513,6 @@ document.addEventListener('keydown', (e) => {
       importedImages.forEach((imgObj, index) => {
         if (imgObj.img) {
           ctx.save();
-          
-          // Appliquer la rotation si définie
-          if (imgObj.rotation && imgObj.rotation !== 0) {
-            const centerX = (imgObj.x || 0) + imgObj.width / 2;
-            const centerY = (imgObj.y || 0) + imgObj.height / 2;
-            ctx.translate(centerX, centerY);
-            ctx.rotate((imgObj.rotation * Math.PI) / 180);
-            ctx.translate(-centerX, -centerY);
-          }
-          
-          // NEW: Apply Advanced Effects Transform
-          if (imgObj.advancedEffect && window.applyAdvancedEffectTransform) {
-              const centerX = (imgObj.x || 0) + imgObj.width / 2;
-              const centerY = (imgObj.y || 0) + imgObj.height / 2;
-              ctx.translate(centerX, centerY);
-              window.applyAdvancedEffectTransform(ctx, imgObj.advancedEffect, imgObj.width, imgObj.height);
-              ctx.translate(-centerX, -centerY);
-          }
-          
-          // BEVEL 3D Effect for images
-          if (imgObj.bevel && imgObj.bevel.enabled) {
-              const b = imgObj.bevel;
-              const shadowAngle = Math.atan2(b.lightY + 40, b.lightX + 40);
-              const shadowDist = b.depth * 0.8;
-              ctx.shadowColor = 'rgba(0,0,0,' + (0.3 + b.depth * 0.02) + ')';
-              ctx.shadowBlur = b.blur * 2;
-              ctx.shadowOffsetX = Math.cos(shadowAngle + Math.PI) * shadowDist;
-              ctx.shadowOffsetY = Math.sin(shadowAngle + Math.PI) * shadowDist;
-          }
-
           switch (imageStyle) {
             case 'grayscale':
               ctx.filter = 'grayscale(1)';
@@ -9157,14 +6530,6 @@ document.addEventListener('keydown', (e) => {
               ctx.filter = 'none';
           }
           ctx.drawImage(imgObj.img, imgObj.x || 0, imgObj.y || 0, imgObj.width, imgObj.height);
-          
-          // NEW: Apply Advanced Effects Post
-          if (imgObj.advancedEffect && window.drawAdvancedEffectPost) {
-              window.drawAdvancedEffectPost(ctx, imgObj.advancedEffect, imgObj.x || 0, imgObj.y || 0, imgObj.width, imgObj.height, () => {
-                  ctx.drawImage(imgObj.img, imgObj.x || 0, imgObj.y || 0, imgObj.width, imgObj.height);
-              });
-          }
-
           ctx.restore();
         }
       });
@@ -9747,59 +7112,8 @@ document.addEventListener('keydown', (e) => {
     });
     
     toolSelect.onchange = () => {
-      const selectedMode = toolSelect.value;
+      currentTool = toolSelect.value;
       
-      // Reset UI panels visibility
-      const artisticStylesPanel = document.getElementById('artisticStylesPanel');
-      const shapeToolsContainer = document.getElementById('shapeToolsContainer');
-      const imageStylePanel = document.getElementById('imageStylePanel');
-      const textOptionsPanel = document.getElementById('textOptionsPanel');
-      const shapeOptions = document.getElementById('shapeOptions');
-      const lassoControls = document.getElementById('lassoControls');
-      const finishPolygonBtn = document.getElementById('finishPolygonBtn');
-
-      if (artisticStylesPanel) artisticStylesPanel.classList.add('hidden');
-      if (shapeToolsContainer) shapeToolsContainer.classList.add('hidden');
-      if (imageStylePanel) imageStylePanel.classList.add('hidden');
-      if (textOptionsPanel) textOptionsPanel.classList.add('hidden');
-      if (shapeOptions) shapeOptions.classList.add('hidden');
-      if (lassoControls) lassoControls.classList.add('hidden');
-
-      // Determine current tool and show relevant panels
-      if (selectedMode === 'brush-basic') {
-        currentTool = 'brush-basic';
-        if (artisticStylesPanel) artisticStylesPanel.classList.remove('hidden');
-      } else if (selectedMode === 'mode-shapes') {
-        if (shapeToolsContainer) shapeToolsContainer.classList.remove('hidden');
-        if (shapeOptions) shapeOptions.classList.remove('hidden');
-        const subShapeSelect = document.getElementById('subShapeSelect');
-        currentTool = subShapeSelect ? subShapeSelect.value : 'shape-rectangle';
-      } else if (selectedMode === 'mode-text') {
-        currentTool = 'text'; 
-        if (textOptionsPanel) textOptionsPanel.classList.remove('hidden');
-      } else if (selectedMode === 'select') {
-        currentTool = 'select';
-        // Show image style panel if an image is already selected
-        if (typeof selectedImageIndex !== 'undefined' && selectedImageIndex !== -1) {
-             if (imageStylePanel) imageStylePanel.classList.remove('hidden');
-        }
-      } else if (selectedMode === 'eraser') {
-        currentTool = 'eraser';
-      } else {
-        currentTool = selectedMode;
-      }
-
-      // Handle Lasso controls visibility if the current tool is a lasso
-      if(currentTool.startsWith('lasso-')) {
-        if (lassoControls) lassoControls.classList.remove('hidden');
-        if (shapeOptions) shapeOptions.classList.add('hidden');
-        if(currentTool === 'lasso-polygon') {
-          if (finishPolygonBtn) finishPolygonBtn.classList.remove('hidden');
-        } else {
-          if (finishPolygonBtn) finishPolygonBtn.classList.add('hidden');
-        }
-      }
-
       // Annuler tout lasso en cours
       if(isUsingLasso || lassoToolset.isPolygonMode) {
         lassoToolset.cancelLasso();
@@ -9807,247 +7121,42 @@ document.addEventListener('keydown', (e) => {
         redrawAll();
       }
       
+      // Afficher/masquer les contrôles spécifiques aux lassos
+      const lassoControls = document.getElementById('lassoControls');
+      const finishPolygonBtn = document.getElementById('finishPolygonBtn');
+      const shapeOptions = document.getElementById('shapeOptions');
+      
+      if(currentTool.startsWith('lasso-')) {
+        lassoControls.classList.remove('hidden');
+        shapeOptions.classList.add('hidden');
+        if(currentTool === 'lasso-polygon') {
+          finishPolygonBtn.classList.remove('hidden');
+        } else {
+          finishPolygonBtn.classList.add('hidden');
+        }
+      } else if(currentTool.startsWith('shape-')) {
+        // Afficher les options de formes
+        lassoControls.classList.add('hidden');
+        shapeOptions.classList.remove('hidden');
+      } else {
+        lassoControls.classList.add('hidden');
+        shapeOptions.classList.add('hidden');
+      }
+      
       if(currentTool==='paste' && clipboard){
         pasteClipboard();
         toolSelect.value='brush-basic';
-        toolSelect.dispatchEvent(new Event('change'));
+        currentTool='brush-basic';
+        lassoControls.classList.add('hidden');
+        shapeOptions.classList.add('hidden');
       }
       if(currentTool==='copy' && selectionRect){
         copySelection();
         toolSelect.value='select';
-        toolSelect.dispatchEvent(new Event('change'));
+        currentTool='select';
+        lassoControls.classList.add('hidden');
+        shapeOptions.classList.add('hidden');
       }
-    };
-
-    // Add listener for subShapeSelect
-    const subShapeSelect = document.getElementById('subShapeSelect');
-    if (subShapeSelect) {
-        subShapeSelect.addEventListener('change', () => {
-            if (toolSelect.value === 'mode-shapes') {
-                currentTool = subShapeSelect.value;
-                
-                // Gestion Formes IMG
-                const formeImgContainer = document.getElementById('formeImgContainer');
-                if (currentTool === 'shape-img') {
-                    formeImgContainer.classList.remove('hidden');
-                } else {
-                    formeImgContainer.classList.add('hidden');
-                }
-                
-                // Gestion Styles de Forme
-                if (window.updateShapeStyleOptionsUI) window.updateShapeStyleOptionsUI();
-            }
-        });
-    }
-    
-    // Initial call to setup UI if needed
-    if (toolSelect.value === 'mode-shapes' && window.updateShapeStyleOptionsUI) window.updateShapeStyleOptionsUI();
-
-    window.updateShapeStyleOptionsUI = function() {
-        const container = document.getElementById('shapeStyleOptionsContainer');
-        if (!container) return;
-        
-        const currentShape = document.getElementById('subShapeSelect').value;
-        
-        // GESTION SPÉCIFIQUE POUR LES FORMES IMG (COLORISATION)
-        if (currentShape === 'shape-img') {
-            container.classList.remove('hidden');
-            container.innerHTML = '';
-            
-            const title = document.createElement('h3');
-            title.className = 'text-sm font-semibold mb-2 text-[#00aaff]';
-            title.textContent = 'Colorisation Image';
-            container.appendChild(title);
-            
-            // Option Activer Colorisation
-            const toggleDiv = document.createElement('div');
-            toggleDiv.className = 'mb-2 flex items-center';
-            const toggleInput = document.createElement('input');
-            toggleInput.type = 'checkbox';
-            toggleInput.id = 'imgColorizeActive';
-            toggleInput.className = 'mr-2';
-            toggleInput.onchange = () => {
-                if (!window.shapeImgOptions) window.shapeImgOptions = {};
-                window.shapeImgOptions.colorize = toggleInput.checked;
-                colorOptionsDiv.classList.toggle('hidden', !toggleInput.checked);
-            };
-            const toggleLabel = document.createElement('label');
-            toggleLabel.className = 'text-xs text-gray-300';
-            toggleLabel.textContent = 'Activer la colorisation';
-            toggleLabel.htmlFor = 'imgColorizeActive';
-            toggleDiv.appendChild(toggleInput);
-            toggleDiv.appendChild(toggleLabel);
-            container.appendChild(toggleDiv);
-            
-            // Options de couleur (cachées par défaut)
-            const colorOptionsDiv = document.createElement('div');
-            colorOptionsDiv.className = 'hidden pl-2 border-l border-[#444]';
-            
-            // Choix de la couleur
-            const colorDiv = document.createElement('div');
-            colorDiv.className = 'mb-2';
-            const colorLabel = document.createElement('label');
-            colorLabel.className = 'block text-xs text-gray-400 mb-1';
-            colorLabel.textContent = 'Couleur de teinte';
-            const colorInput = document.createElement('input');
-            colorInput.type = 'color';
-            colorInput.value = '#ff0000';
-            colorInput.className = 'w-full h-6 border-none p-0 bg-transparent cursor-pointer';
-            colorInput.onchange = (e) => {
-                if (!window.shapeImgOptions) window.shapeImgOptions = {};
-                window.shapeImgOptions.color = e.target.value;
-            };
-            colorDiv.appendChild(colorLabel);
-            colorDiv.appendChild(colorInput);
-            colorOptionsDiv.appendChild(colorDiv);
-            
-            // Opacité de la couleur
-            const opacityDiv = document.createElement('div');
-            opacityDiv.className = 'mb-2';
-            const opacityLabel = document.createElement('label');
-            opacityLabel.className = 'block text-xs text-gray-400 mb-1';
-            opacityLabel.textContent = 'Intensité couleur';
-            const opacityInput = document.createElement('input');
-            opacityInput.type = 'range';
-            opacityInput.min = '0';
-            opacityInput.max = '100';
-            opacityInput.value = '50';
-            opacityInput.className = 'w-full h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer';
-            opacityInput.oninput = (e) => {
-                if (!window.shapeImgOptions) window.shapeImgOptions = {};
-                window.shapeImgOptions.intensity = parseInt(e.target.value) / 100;
-            };
-            opacityDiv.appendChild(opacityLabel);
-            opacityDiv.appendChild(opacityInput);
-            colorOptionsDiv.appendChild(opacityDiv);
-            
-            container.appendChild(colorOptionsDiv);
-            
-            // Initialiser l'état global si vide
-            if (!window.shapeImgOptions) window.shapeImgOptions = { colorize: false, color: '#ff0000', intensity: 0.5 };
-            
-            return;
-        }
-        
-        container.classList.remove('hidden');
-        container.innerHTML = '';
-        
-        const title = document.createElement('h3');
-        title.className = 'text-sm font-semibold mb-2 text-[#00aaff]';
-        title.textContent = 'Style de Forme';
-        container.appendChild(title);
-        
-        // Styles disponibles
-        const styles = [
-            { id: 'flat-fill', name: 'Remplissage Plat' },
-            { id: 'neon', name: 'Néon' },
-            { id: 'sketch', name: 'Crayonné (Sketch)' },
-            { id: 'glass', name: 'Verre (Glassmorphism)' },
-            { id: 'retro', name: 'Rétro / Pixel' },
-            { id: 'glitch', name: 'Glitch' }
-        ];
-        
-        // Sélecteur de style
-        const styleSelect = document.createElement('select');
-        styleSelect.className = 'w-full bg-[#1e1e1e] border border-[#555] rounded px-2 py-1 mb-3 text-[#c0c0c0] text-xs';
-        styleSelect.onchange = () => {
-            window.currentShapeStyle = styleSelect.value;
-            renderStyleOptions(styleSelect.value, optionsContainer);
-        };
-        
-        styles.forEach(s => {
-            const opt = document.createElement('option');
-            opt.value = s.id;
-            opt.textContent = s.name;
-            if (window.currentShapeStyle === s.id) opt.selected = true;
-            styleSelect.appendChild(opt);
-        });
-        
-        container.appendChild(styleSelect);
-        
-        const optionsContainer = document.createElement('div');
-        container.appendChild(optionsContainer);
-        
-        // Initial render
-        if (!window.currentShapeStyle) window.currentShapeStyle = styles[0].id;
-        renderStyleOptions(window.currentShapeStyle, optionsContainer);
-    };
-    
-    window.renderStyleOptions = function(styleId, container) {
-        container.innerHTML = '';
-        
-        // Helper pour créer des inputs (SLIDERS)
-        const createRange = (label, min, max, val, callback) => {
-            const div = document.createElement('div');
-            div.className = 'mb-2';
-            const flex = document.createElement('div');
-            flex.className = 'flex justify-between items-center mb-1';
-            const lbl = document.createElement('label');
-            lbl.className = 'text-xs text-gray-400';
-            lbl.textContent = label;
-            const valDisplay = document.createElement('span');
-            valDisplay.className = 'text-xs text-[#00aaff]';
-            valDisplay.textContent = val;
-            flex.appendChild(lbl);
-            flex.appendChild(valDisplay);
-            
-            const input = document.createElement('input');
-            input.type = 'range';
-            input.min = min; input.max = max; input.value = val;
-            input.className = 'w-full h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer';
-            input.oninput = (e) => {
-                valDisplay.textContent = e.target.value;
-                callback(e.target.value);
-                if(window.updateSelectedShape) window.updateSelectedShape(); // Update en temps réel
-            };
-            div.appendChild(flex);
-            div.appendChild(input);
-            container.appendChild(div);
-        };
-        
-        const createColor = (label, val, callback) => {
-             const div = document.createElement('div');
-             div.className = 'mb-2 flex items-center justify-between';
-             const lbl = document.createElement('label');
-             lbl.className = 'text-xs text-gray-400';
-             lbl.textContent = label;
-             const input = document.createElement('input');
-             input.type = 'color';
-             input.value = val;
-             input.className = 'w-6 h-6 border-none p-0 bg-transparent';
-             input.onchange = (e) => {
-                 callback(e.target.value);
-                 if(window.updateSelectedShape) window.updateSelectedShape();
-             };
-             div.appendChild(lbl);
-             div.appendChild(input);
-             container.appendChild(div);
-        };
-
-        // Stocker les options dans une variable globale pour l'usage lors du dessin
-        if (!window.shapeStyleOptions) window.shapeStyleOptions = {};
-        if (!window.shapeStyleOptions[styleId]) window.shapeStyleOptions[styleId] = {};
-
-        // Valeurs par défaut si non définies
-        const opts = window.shapeStyleOptions[styleId];
-
-        if (styleId === 'neon') {
-            createRange('Intensité Glow', 0, 50, opts.glow || 20, v => opts.glow = v);
-            createColor('Couleur Glow', opts.color || '#00ffff', v => opts.color = v);
-            createRange('Opacité Centre', 0, 100, opts.opacity || 10, v => opts.opacity = v);
-        } else if (styleId === 'sketch') {
-            createRange('Jitter (Tremblement)', 0, 10, opts.jitter || 2, v => opts.jitter = v);
-            createRange('Répétitions', 1, 5, opts.repeat || 3, v => opts.repeat = v);
-        } else if (styleId === 'glass') {
-            createRange('Flou (Blur)', 0, 20, opts.blur || 5, v => opts.blur = v);
-            createRange('Opacité', 0, 100, opts.opacity || 30, v => opts.opacity = v);
-            createColor('Reflet', opts.shine || '#ffffff', v => opts.shine = v);
-        } else if (styleId === 'retro') {
-            createRange('Taille Pixel', 2, 20, opts.pixelSize || 5, v => opts.pixelSize = v);
-        } else if (styleId === 'glitch') {
-            createRange('Décalage RGB', 0, 20, opts.offset || 5, v => opts.offset = v);
-            createRange('Hauteur Bande', 1, 50, opts.height || 5, v => opts.height = v);
-        }
     };
     
     document.querySelectorAll('input[name="gradientAngle"]').forEach(radio=>{
@@ -10338,7 +7447,6 @@ document.addEventListener('keydown', (e) => {
 
     // Fonction pour recalibrer les coordonnées après un redimensionnement
     function recalibrateCoordinates() {
-      window.recalibrateCoordinates = recalibrateCoordinates;
       // Réinitialiser les transformations pour éviter les décalages
       zoomLevel = 1;
       canvasOffset = { x: 0, y: 0 };
@@ -10353,62 +7461,6 @@ document.addEventListener('keydown', (e) => {
         updateZoomDisplay();
       }, 50);
     }
-
-    // **NOUVEAU: Fonction pour adapter le canvas à l'écran (Responsive)**
-    function fitCanvasToScreen() {
-      window.fitCanvasToScreen = fitCanvasToScreen;
-      const container = document.getElementById('canvasContainer');
-      if (!container) return;
-      
-      // Reset transform temporairement pour calculs précis du layout
-      canvas.style.transform = 'none';
-      
-      const containerRect = container.getBoundingClientRect();
-      const canvasRect = canvas.getBoundingClientRect();
-      
-      const padding = 40; // Marge
-      const availableW = containerRect.width - padding;
-      const availableH = containerRect.height - padding;
-      
-      // Calculer le zoom nécessaire
-      const scaleX = availableW / canvas.width;
-      const scaleY = availableH / canvas.height;
-      
-      let newZoom = Math.min(scaleX, scaleY);
-      // Optionnel: limiter le zoom max à 1 si on ne veut pas pixeliser les petits canvas
-      // Mais pour "Responsive", on veut souvent que ça remplisse. 
-      // Ici on limite à 1 pour ne pas agrandir inutilement, sauf si demandé.
-      if (newZoom > 1) newZoom = 1; 
-      
-      zoomLevel = newZoom;
-      
-      // Calculer le centrage
-      const targetW = canvas.width * zoomLevel;
-      const targetH = canvas.height * zoomLevel;
-      
-      const targetLeft = (containerRect.width - targetW) / 2;
-      const targetTop = (containerRect.height - targetH) / 2;
-      
-      // Position actuelle du layout (centré par flexbox ou autre)
-      const currentLayoutLeft = canvasRect.left - containerRect.left;
-      const currentLayoutTop = canvasRect.top - containerRect.top;
-      
-      // Calculer l'offset nécessaire (compensé par le zoom car translate est dans scale)
-      // Transform: scale(z) translate(tx, ty) => shift = tx * z
-      const requiredShiftX = targetLeft - currentLayoutLeft;
-      const requiredShiftY = targetTop - currentLayoutTop;
-      
-      canvasOffset.x = requiredShiftX / zoomLevel;
-      canvasOffset.y = requiredShiftY / zoomLevel;
-      
-      updateCanvasTransform();
-      updateZoomDisplay();
-    }
-
-    // Écouteur pour le redimensionnement de la fenêtre
-    window.addEventListener('resize', () => {
-        requestAnimationFrame(fitCanvasToScreen);
-    });
 
     // Raccourci clavier pour réinitialiser le zoom (Ctrl+0)
     document.addEventListener('keydown', (e) => {
@@ -10433,23 +7485,8 @@ document.addEventListener('keydown', (e) => {
         return; // Bloquer toute interaction dans la zone protégée
       }
 
-      // Vérifier si on clique sur un élément verrouillé (Locked Layer)
-      const clickedElForLockCheck = getClickedElement(pos.x, pos.y);
-      if (clickedElForLockCheck && clickedElForLockCheck.element.locked) {
-          if (currentTool === 'select') {
-              e.preventDefault();
-              return;
-          }
-      }
-
       // SYSTÈME DE SÉLECTION AVANCÉ - Vérifier si on clique sur un élément sélectionnable
       if (isElementSelected) {
-        // Si l'élément sélectionné est verrouillé, empêcher toute modification
-        if (selectedElement.locked) {
-             e.preventDefault();
-             return;
-        }
-
         // Vérifier d'abord si on clique sur une poignée
         const clickedHandle = getClickedHandle(pos.x, pos.y);
         if (clickedHandle) {
@@ -10512,17 +7549,6 @@ document.addEventListener('keydown', (e) => {
       // Vérifier si on clique sur un nouvel élément à sélectionner
       const clickedElement = getClickedElement(pos.x, pos.y);
       if (clickedElement && (currentTool === 'select' || e.ctrlKey)) {
-        // Gestion spéciale pour le texte en mode select
-        if (clickedElement.type === 'text') {
-          const textEl = clickedElement.element;
-          selectTextElement(textEl);
-          // Permettre le déplacement immédiat si on reste cliqué
-          isDragging = true;
-          activeTextElement = textEl;
-          dragOffset = { x: pos.x - textEl.x, y: pos.y - textEl.y };
-          e.preventDefault();
-          return;
-        }
         selectElement(clickedElement);
         e.preventDefault();
         return;
@@ -10561,14 +7587,6 @@ document.addEventListener('keydown', (e) => {
         isDraggingImage = true;
         startX = pos.x;
         startY = pos.y;
-        
-        // Show image style panel
-        const imageStylePanel = document.getElementById('imageStylePanel');
-        if (imageStylePanel) imageStylePanel.classList.remove('hidden');
-
-        // Load styles into sliders
-        if (typeof loadSelectedImageStyles === 'function') loadSelectedImageStyles();
-
         redrawAll();
         e.preventDefault();
         return;
@@ -10577,11 +7595,6 @@ document.addEventListener('keydown', (e) => {
       // Deselect image if clicking elsewhere
       if (imageIndex === -1 && currentTool === 'select') {
         selectedImageIndex = -1;
-        
-        // Hide image style panel
-        const imageStylePanel = document.getElementById('imageStylePanel');
-        if (imageStylePanel) imageStylePanel.classList.add('hidden');
-
         redrawAll();
       }
       
@@ -10759,102 +7772,6 @@ document.addEventListener('keydown', (e) => {
                p.y = newY + (p.y - currentBounds.y) * scaleY;
              }
           }
-        } else if (selectedElementType === 'image') {
-          // Redimensionnement des images
-          const img = selectedElement;
-          const originalX = img.x || 0;
-          const originalY = img.y || 0;
-          const originalW = img.width;
-          const originalH = img.height;
-          
-          switch(elementResizeHandle) {
-            case 'nw':
-              img.width = originalW - deltaX;
-              img.height = originalH - deltaY;
-              img.x = originalX + deltaX;
-              img.y = originalY + deltaY;
-              break;
-            case 'ne':
-              img.width = originalW + deltaX;
-              img.height = originalH - deltaY;
-              img.y = originalY + deltaY;
-              break;
-            case 'sw':
-              img.width = originalW - deltaX;
-              img.height = originalH + deltaY;
-              img.x = originalX + deltaX;
-              break;
-            case 'se':
-              img.width = originalW + deltaX;
-              img.height = originalH + deltaY;
-              break;
-            case 'n':
-              img.height = originalH - deltaY;
-              img.y = originalY + deltaY;
-              break;
-            case 's':
-              img.height = originalH + deltaY;
-              break;
-            case 'w':
-              img.width = originalW - deltaX;
-              img.x = originalX + deltaX;
-              break;
-            case 'e':
-              img.width = originalW + deltaX;
-              break;
-          }
-          
-          // Dimensions minimales
-          if (img.width < 10) img.width = 10;
-          if (img.height < 10) img.height = 10;
-        } else if (selectedElementType === 'text') {
-          // Redimensionnement des textes
-          const txt = selectedElement;
-          const originalW = txt.width || 100;
-          const originalH = txt.height || txt.fontSize || 24;
-          
-          switch(elementResizeHandle) {
-            case 'nw':
-              txt.width = originalW - deltaX;
-              txt.height = originalH - deltaY;
-              txt.x += deltaX;
-              txt.y += deltaY;
-              break;
-            case 'ne':
-              txt.width = originalW + deltaX;
-              txt.height = originalH - deltaY;
-              txt.y += deltaY;
-              break;
-            case 'sw':
-              txt.width = originalW - deltaX;
-              txt.height = originalH + deltaY;
-              txt.x += deltaX;
-              break;
-            case 'se':
-              txt.width = originalW + deltaX;
-              txt.height = originalH + deltaY;
-              break;
-            case 'n':
-              txt.height = originalH - deltaY;
-              txt.y += deltaY;
-              break;
-            case 's':
-              txt.height = originalH + deltaY;
-              break;
-            case 'w':
-              txt.width = originalW - deltaX;
-              txt.x += deltaX;
-              break;
-            case 'e':
-              txt.width = originalW + deltaX;
-              break;
-          }
-          
-          // Dimensions minimales
-          if (txt.width < 20) txt.width = 20;
-          if (txt.height < 10) txt.height = 10;
-          // Ajuster la taille de police proportionnellement
-          txt.fontSize = Math.max(8, Math.round(txt.height * 0.8));
         }
         
         window.resizeStartX = pos.x;
@@ -11134,27 +8051,12 @@ document.addEventListener('keydown', (e) => {
       if(currentTool.startsWith('shape-')){
         redrawAll();
         const shapeType = currentTool.replace('shape-','');
-        
-        // Utiliser des dimensions signées pour TOUTES les formes
-        // Cela garantit que le point de départ (clic) reste fixe comme ancre
-        const x = startX;
-        const y = startY;
-        const w = pos.x - startX;
-        const h = pos.y - startY;
-
+        const x = Math.min(startX,pos.x);
+        const y = Math.min(startY,pos.y);
+        const w = Math.abs(pos.x - startX);
+        const h = Math.abs(pos.y - startY);
         const color = getCurrentDrawColor();
-        
-        const tempShape = {type:shapeType,x,y,w,h,size:brushSize,color};
-        
-        // AJOUT POUR PREVIEW FORMES IMG
-        if (shapeType === 'img') {
-            tempShape.imgSrc = window.currentFormeImgUrl;
-            if (window.shapeImgOptions) {
-                tempShape.imgOptions = window.shapeImgOptions;
-            }
-        }
-        
-        drawShape(ctx, tempShape);
+        drawShape(ctx,{type:shapeType,x,y,w,h,size:brushSize,color});
         e.preventDefault();
       }
     };
@@ -11314,19 +8216,8 @@ document.addEventListener('keydown', (e) => {
           styleSpreading: spreading,
           styleBlur: blurEffect,
           styleShine: shineIntensity,
-          extraTexture: currentTextureStyle,
-          // NEW TEXTURE SYSTEM
-          texture: (window.textureOptions && window.textureOptions.enabled) ? JSON.parse(JSON.stringify(window.textureOptions)) : null
+          extraTexture: currentTextureStyle
         };
-        
-        // AJOUT POUR FORMES IMG
-        if (shapeType === 'img') {
-            newShape.imgSrc = window.currentFormeImgUrl;
-            if (window.shapeImgOptions) {
-                newShape.imgOptions = JSON.parse(JSON.stringify(window.shapeImgOptions));
-            }
-        }
-
         shapes.push(newShape);
         // Ne pas appeler redrawAll ici, il sera appelé par le patch shapes.push
         // **SAUVEGARDER L'ÉTAT POUR UNDO/REDO**
@@ -11335,6 +8226,13 @@ document.addEventListener('keydown', (e) => {
       isDrawing=false; lastPoint=null;
       e.preventDefault();
     };
+
+    // Copier sélection
+    function copySelection(){
+      if(!selectionRect) return;
+      clipboard = ctx.getImageData(selectionRect.x, selectionRect.y, selectionRect.w, selectionRect.h);
+      showNotification('Sélection copiée dans le presse-papiers interne.', 'success');
+    }
     
     // Coller presse-papiers
     function pasteClipboard(){
@@ -11393,81 +8291,9 @@ document.addEventListener('keydown', (e) => {
         sortedLayers.forEach(layer => {
           try {
             if (layer.type === 'image' && layer.ref && layer.ref.img) {
-              // Dessiner image avec filtres, rotation et textures
-              exportCtx.save();
-              
-              // Appliquer la rotation si définie
-              if (layer.ref.rotation && layer.ref.rotation !== 0) {
-                const centerX = (layer.ref.x || 0) + layer.ref.width / 2;
-                const centerY = (layer.ref.y || 0) + layer.ref.height / 2;
-                exportCtx.translate(centerX, centerY);
-                exportCtx.rotate((layer.ref.rotation * Math.PI) / 180);
-                exportCtx.translate(-centerX, -centerY);
-              }
-              
-              // BEVEL 3D Effect for images in export
-              if (layer.ref.bevel && layer.ref.bevel.enabled) {
-                const b = layer.ref.bevel;
-                const shadowAngle = Math.atan2(b.lightY + 40, b.lightX + 40);
-                const shadowDist = b.depth * 0.8;
-                exportCtx.shadowColor = 'rgba(0,0,0,' + (0.3 + b.depth * 0.02) + ')';
-                exportCtx.shadowBlur = b.blur * 2;
-                exportCtx.shadowOffsetX = Math.cos(shadowAngle + Math.PI) * shadowDist;
-                exportCtx.shadowOffsetY = Math.sin(shadowAngle + Math.PI) * shadowDist;
-              }
-              
-              if (layer.ref.filters) {
-                 const f = layer.ref.filters;
-                 exportCtx.filter = `brightness(${f.brightness}%) contrast(${f.contrast}%) saturate(${f.saturate}%) hue-rotate(${f.hue}deg) blur(${f.blur}px) sepia(${f.sepia}%) grayscale(${f.grayscale}%) invert(${f.invert}%) opacity(${f.opacity}%)`;
-              }
-              
-              // APPLY TEXTURE TO IMAGE EXPORT
-              if (layer.ref.texture && layer.ref.texture.enabled && window.getTexturePattern) {
-                  const pattern = window.getTexturePattern(exportCtx, layer.ref.texture);
-                  if (pattern) {
-                      const matrix = new DOMMatrix();
-                      if (layer.ref.texture.scale) {
-                          const sc = layer.ref.texture.scale / 100;
-                          matrix.scaleSelf(sc, sc);
-                      }
-                      if (layer.ref.texture.angle) {
-                          matrix.rotateSelf(layer.ref.texture.angle);
-                      }
-                      pattern.setTransform(matrix);
-                      
-                      if (layer.ref.texture.blendMode) {
-                          exportCtx.globalCompositeOperation = layer.ref.texture.blendMode;
-                      }
-                      
-                      // Create temporary canvas for texture application
-                      const tempCanvas = document.createElement('canvas');
-                      tempCanvas.width = layer.ref.width;
-                      tempCanvas.height = layer.ref.height;
-                      const tempCtx = tempCanvas.getContext('2d');
-                      
-                      // Draw image
-                      tempCtx.drawImage(layer.ref.img, 0, 0, layer.ref.width, layer.ref.height);
-                      
-                      // Apply texture
-                      tempCtx.globalCompositeOperation = layer.ref.texture.blendMode || 'source-over';
-                      if (layer.ref.texture.opacity !== undefined) {
-                          tempCtx.globalAlpha = layer.ref.texture.opacity / 100;
-                      }
-                      tempCtx.fillStyle = pattern;
-                      tempCtx.fillRect(0, 0, layer.ref.width, layer.ref.height);
-                      
-                      // Draw result to export canvas
-                      exportCtx.drawImage(tempCanvas, layer.ref.x || 0, layer.ref.y || 0);
-                      exportCtx.globalCompositeOperation = 'source-over';
-                      exportCtx.globalAlpha = 1.0;
-                  } else {
-                      exportCtx.drawImage(layer.ref.img, layer.ref.x || 0, layer.ref.y || 0, layer.ref.width, layer.ref.height);
-                  }
-              } else {
-                  console.log('Export: Dessin image', layer.ref.x, layer.ref.y, layer.ref.width, layer.ref.height);
-                  exportCtx.drawImage(layer.ref.img, layer.ref.x || 0, layer.ref.y || 0, layer.ref.width, layer.ref.height);
-              }
-              exportCtx.restore();
+              // Dessiner image
+              console.log('Export: Dessin image', layer.ref.x, layer.ref.y, layer.ref.width, layer.ref.height);
+              exportCtx.drawImage(layer.ref.img, layer.ref.x || 0, layer.ref.y || 0, layer.ref.width, layer.ref.height);
             } else if (layer.type === 'shape' && layer.ref) {
               // Dessiner forme
               console.log('Export: Dessin forme', layer.ref.type);
@@ -11483,115 +8309,19 @@ document.addEventListener('keydown', (e) => {
                 console.log('Export: Dessin stroke', stroke.tool, stroke.points.length, 'points');
                 exportCtx.save();
                 
-                // Logique de style identique à redrawAll
-                let shouldApplyStyle = false;
-                if (styleAppliedToNewOnly && stroke.timestamp >= styleActivationTime) {
-                  shouldApplyStyle = true;
-                } else if (!styleAppliedToNewOnly) {
-                  shouldApplyStyle = true;
-                }
-
-                const effectiveStyle = stroke.savedBrushStyle || currentBrushStyle;
+                // **CORRECTION TEMPORAIRE: Utiliser le rendu basique pour l'export**
+                exportCtx.lineCap = 'round';
+                exportCtx.lineJoin = 'round';
+                exportCtx.lineWidth = stroke.size || 5;
+                exportCtx.strokeStyle = stroke.color || '#000000';
+                exportCtx.globalAlpha = 1.0;
                 
-                if (shouldApplyStyle && effectiveStyle !== 'normal') {
-                    // Sauvegarder les styles actuels (bien que sur exportCtx cela n'affecte pas le global, 
-                    // applyArtisticBrushStyle utilise les variables globales)
-                    const tempBrushStyle = currentBrushStyle;
-                    const tempStyleIntensity = styleIntensity;
-                    const tempTextureGrain = textureGrain;
-                    const tempSpreading = spreading;
-                    const tempBlurEffect = blurEffect;
-                    const tempShineIntensity = shineIntensity;
-                    const tempShineColor = document.getElementById('shineColor').value;
-                    const tempShineOpacity = shineOpacity;
-                    
-                    // Utiliser les styles sauvegardés avec le stroke (si disponibles)
-                    if (stroke.savedBrushStyle) {
-                        currentBrushStyle = stroke.savedBrushStyle;
-                        styleIntensity = stroke.savedStyleIntensity || styleIntensity;
-                        textureGrain = stroke.savedTextureGrain || textureGrain;
-                        spreading = stroke.savedSpreading || spreading;
-                        blurEffect = stroke.savedBlurEffect || blurEffect;
-                        shineIntensity = stroke.savedShineIntensity || shineIntensity;
-                        document.getElementById('shineColor').value = stroke.savedShineColor || tempShineColor;
-                        shineOpacity = stroke.savedShineOpacity || shineOpacity;
-                    }
-                    
-                    // Dessiner chaque segment avec les styles appropriés
-                    for (let i = 1; i < stroke.points.length; i++) {
-                        const p1 = stroke.points[i-1];
-                        const p2 = stroke.points[i];
-                        const segmentSeed = (stroke.seed || 0) + i * 1000;
-                        applyArtisticBrushStyle(exportCtx, p1.x, p1.y, p2.x, p2.y, stroke.tool || 'brush-basic', stroke.size || 5, stroke.color || '#000000', segmentSeed);
-                    }
-                    
-                    // Restaurer les styles globaux
-                    currentBrushStyle = tempBrushStyle;
-                    styleIntensity = tempStyleIntensity;
-                    textureGrain = tempTextureGrain;
-                    spreading = tempSpreading;
-                    blurEffect = tempBlurEffect;
-                    shineIntensity = tempShineIntensity;
-                    document.getElementById('shineColor').value = tempShineColor;
-                    shineOpacity = tempShineOpacity;
-
-                } else {
-                    // Rendu basique avec support texture
-                    exportCtx.lineCap = 'round';
-                    exportCtx.lineJoin = 'round';
-                    exportCtx.lineWidth = stroke.size || 5;
-                    
-                    // BEVEL 3D Effect for strokes in export
-                    if (stroke.bevel && stroke.bevel.enabled) {
-                        const b = stroke.bevel;
-                        const shadowAngle = Math.atan2(b.lightY + 40, b.lightX + 40);
-                        const shadowDist = b.depth * 0.8;
-                        exportCtx.shadowColor = 'rgba(0,0,0,' + (0.3 + b.depth * 0.02) + ')';
-                        exportCtx.shadowBlur = b.blur * 2;
-                        exportCtx.shadowOffsetX = Math.cos(shadowAngle + Math.PI) * shadowDist;
-                        exportCtx.shadowOffsetY = Math.sin(shadowAngle + Math.PI) * shadowDist;
-                    }
-                    
-                    // TEXTURE FOR STROKES IN EXPORT
-                    let strokeStyle = stroke.color || '#000000';
-                    if (stroke.texture && stroke.texture.enabled && window.getTexturePattern) {
-                        const pattern = window.getTexturePattern(exportCtx, stroke.texture);
-                        if (pattern) {
-                            const matrix = new DOMMatrix();
-                            if (stroke.texture.scale) {
-                                const sc = stroke.texture.scale / 100;
-                                matrix.scaleSelf(sc, sc);
-                            }
-                            if (stroke.texture.angle) {
-                                matrix.rotateSelf(stroke.texture.angle);
-                            }
-                            pattern.setTransform(matrix);
-                            strokeStyle = pattern;
-                            
-                            if (stroke.texture.blendMode) {
-                                exportCtx.globalCompositeOperation = stroke.texture.blendMode;
-                            }
-                            if (stroke.texture.opacity !== undefined) {
-                                exportCtx.globalAlpha = stroke.texture.opacity / 100;
-                            }
-                        }
-                    }
-                    exportCtx.strokeStyle = strokeStyle;
-                    // Don't override globalAlpha if texture opacity was set
-                    if (!stroke.texture || stroke.texture.opacity === undefined) {
-                        exportCtx.globalAlpha = 1.0;
-                    }
-                    
-                    exportCtx.beginPath();
-                    exportCtx.moveTo(stroke.points[0].x, stroke.points[0].y);
-                    for (let i = 1; i < stroke.points.length; i++) {
-                    exportCtx.lineTo(stroke.points[i].x, stroke.points[i].y);
-                    }
-                    exportCtx.stroke();
-                    
-                    // Reset composite operation
-                    exportCtx.globalCompositeOperation = 'source-over';
+                exportCtx.beginPath();
+                exportCtx.moveTo(stroke.points[0].x, stroke.points[0].y);
+                for (let i = 1; i < stroke.points.length; i++) {
+                  exportCtx.lineTo(stroke.points[i].x, stroke.points[i].y);
                 }
+                exportCtx.stroke();
                 
                 exportCtx.restore();
               }
@@ -12696,12 +9426,11 @@ function performSandboxedDownload(canvas, filename) {
   </script>
   <script>
   // Create the new icon button in the left vertical toolbar
-  const leftToolbarRef = document.getElementById('leftToolbar');
   const baseIconBtn = document.createElement('button');
   baseIconBtn.setAttribute('aria-label', 'Base Size and Images');
   baseIconBtn.className = 'w-10 h-10 flex items-center justify-center text-[#c0c0c0] hover:bg-[#3a3a3a] rounded';
   baseIconBtn.innerHTML = '<i class="fas fa-layer-group text-[20px]"></i>';
-  if (leftToolbarRef) leftToolbarRef.appendChild(baseIconBtn);
+  leftToolbar.appendChild(baseIconBtn);
 
   // Reference to the right panel container (tools section)
   const rightPanel = document.getElementById('rightPanel');
@@ -12739,9 +9468,7 @@ function performSandboxedDownload(canvas, filename) {
   `;
 
   // Insert the new panel after the existing tools section
-  if (toolsSection && toolsSection.parentNode) {
-      toolsSection.parentNode.insertBefore(baseImagesPanel, toolsSection.nextSibling);
-  }
+  toolsSection.parentNode.insertBefore(baseImagesPanel, toolsSection.nextSibling);
 
   // Variables to track base and images
   const baseWidthInput = baseImagesPanel.querySelector('#baseWidth');
@@ -12756,83 +9483,48 @@ function performSandboxedDownload(canvas, filename) {
 
   // Function to update base inputs from canvas size
   function updateBaseInputs() {
-    if (baseWidthInput) baseWidthInput.value = canvas.width;
-    if (baseHeightInput) baseHeightInput.value = canvas.height;
+    baseWidthInput.value = canvas.width;
+    baseHeightInput.value = canvas.height;
   }
-
-    // Function to resize the base canvas
-    window.resizeCanvas = function(newWidth, newHeight) {
-        if (newWidth < 1 || newHeight < 1) return;
-        
-        // Sauvegarder le contenu actuel du drawingLayer
-        let oldDrawingContent = null;
-        // Check if drawingLayer exists globally or locally
-        const dLayer = (typeof drawingLayer !== 'undefined') ? drawingLayer : null;
-        
-        if (dLayer && dLayer.width > 0 && dLayer.height > 0) {
-            try {
-                oldDrawingContent = dLayer.getContext('2d').getImageData(0, 0, dLayer.width, dLayer.height);
-            } catch(e) { console.warn("Cannot get drawing layer data", e); }
-        }
-        
-        // Redimensionner le canvas principal
-        canvas.width = newWidth;
-        canvas.height = newHeight;
-        canvas.style.width = newWidth + 'px';
-        canvas.style.height = newHeight + 'px';
-        
-        // Redimensionner le drawingLayer
-        if (dLayer) {
-            dLayer.width = newWidth;
-            dLayer.height = newHeight;
-            
-            // Restaurer l'ancien contenu si il existait
-            if (oldDrawingContent) {
-                try {
-                    dLayer.getContext('2d').putImageData(oldDrawingContent, 0, 0);
-                } catch(e) {}
-            }
-        }
-        
-        // Recalibrer le système de coordonnées
-        if (typeof recalibrateCoordinates === 'function') recalibrateCoordinates();
-        
-        // Redessiner tout proprement
-        if (typeof redrawAll === 'function') redrawAll();
-        
-        // Mettre à jour les inputs
-        updateBaseInputs();
-        
-        // Fermer la modale si ouverte
-        const modal = document.getElementById('projectOptionsModal');
-        if (modal) modal.classList.add('hidden');
-        
-        // **IMPORTANT: Adapter à l'écran immédiatement**
-        if (typeof fitCanvasToScreen === 'function') {
-            setTimeout(() => fitCanvasToScreen(), 50);
-        }
-    };
-
-    // Fonction pour afficher la modale d'options de projet
-    window.showProjectOptions = function() {
-        const modal = document.getElementById('projectOptionsModal');
-        if (modal) modal.classList.remove('hidden');
-    };
-
-    // Fonction pour appliquer le redimensionnement personnalisé
-    window.applyCustomResize = function() {
-        const w = parseInt(document.getElementById('customWidth').value);
-        const h = parseInt(document.getElementById('customHeight').value);
-        if (w > 0 && h > 0) {
-            resizeCanvas(w, h);
-        } else {
-            alert('Veuillez entrer des dimensions valides.');
-        }
-    };
 
   // Function to resize the base canvas
   function resizeBaseCanvas(newWidth, newHeight) {
-    resizeCanvas(newWidth, newHeight);
+    if (newWidth < 1 || newHeight < 1) return;
+    
+    // Sauvegarder le contenu actuel du drawingLayer
+    let oldDrawingContent = null;
+    if (drawingLayer && drawingLayer.width > 0 && drawingLayer.height > 0) {
+      oldDrawingContent = drawingLayer.getContext('2d').getImageData(0, 0, drawingLayer.width, drawingLayer.height);
+    }
+    
+    // Redimensionner le canvas principal
+    canvas.width = newWidth;
+    canvas.height = newHeight;
+    canvas.style.width = newWidth + 'px';
+    canvas.style.height = newHeight + 'px';
+    
+    // Redimensionner le drawingLayer
+    if (drawingLayer) {
+      drawingLayer.width = newWidth;
+      drawingLayer.height = newHeight;
+      
+      // Restaurer l'ancien contenu si il existait
+      if (oldDrawingContent) {
+        drawingLayer.getContext('2d').putImageData(oldDrawingContent, 0, 0);
+      }
+    }
+    
+    // NE PAS redimensionner importedImage - c'est juste une référence
+    // Les dimensions des images importées sont gérées individuellement
+    
+    // Recalibrer le système de coordonnées
+    recalibrateCoordinates();
+    
+    // Redessiner tout proprement
+    redrawAll();
+    
+    // Mettre à jour les inputs
+    updateBaseInputs();
   }
 
   // Function to clear resize controls
@@ -13677,14 +10369,6 @@ function performSandboxedDownload(canvas, filename) {
       const leftDiv = document.createElement('div');
       leftDiv.className = 'flex items-center space-x-2';
 
-      // Checkbox for bulk selection
-      const checkbox = document.createElement('input');
-      checkbox.type = 'checkbox';
-      checkbox.className = 'layer-checkbox mr-2';
-      checkbox.dataset.id = layer.id;
-      checkbox.addEventListener('change', updateBulkActionsPanel);
-      leftDiv.appendChild(checkbox);
-
       const icon = document.createElement('i');
       icon.className = 'text-[#00aaff]';
       if (layer.type === 'image') icon.classList.add('fas', 'fa-image');
@@ -13696,7 +10380,6 @@ function performSandboxedDownload(canvas, filename) {
       const nameSpan = document.createElement('span');
       nameSpan.textContent = layer.name;
       nameSpan.className = 'truncate max-w-[180px]';
-      if (layer.locked) nameSpan.classList.add('text-yellow-500');
       leftDiv.appendChild(nameSpan);
 
       li.appendChild(leftDiv);
@@ -13704,64 +10387,6 @@ function performSandboxedDownload(canvas, filename) {
       // Right: priority input and delete button
       const rightDiv = document.createElement('div');
       rightDiv.className = 'flex items-center space-x-2';
-
-      // Lock button
-      const lockBtn = document.createElement('button');
-      lockBtn.className = layer.locked ? 'text-yellow-500' : 'text-gray-500 hover:text-yellow-500';
-      lockBtn.innerHTML = layer.locked ? '<i class="fas fa-lock"></i>' : '<i class="fas fa-lock-open"></i>';
-      lockBtn.title = layer.locked ? 'Déverrouiller' : 'Verrouiller';
-      lockBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          layer.locked = !layer.locked;
-          if (layer.ref) layer.ref.locked = layer.locked;
-          renderLayersList();
-      });
-      rightDiv.appendChild(lockBtn);
-
-      // Copy button (only for text elements)
-      if (layer.type === 'text') {
-        const copyBtn = document.createElement('button');
-        copyBtn.className = 'text-blue-500 hover:text-blue-700 focus:outline-none';
-        copyBtn.title = 'Copier le texte';
-        copyBtn.innerHTML = '<i class="fas fa-copy"></i>';
-        copyBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          // Copy text content to clipboard
-          if (layer.ref && layer.ref.text) {
-            navigator.clipboard.writeText(layer.ref.text).then(() => {
-              showNotification('Texte copié dans le presse-papiers', 'success');
-            }).catch(err => {
-              console.error('Erreur lors de la copie:', err);
-              showNotification('Erreur lors de la copie', 'error');
-            });
-          }
-        });
-        rightDiv.appendChild(copyBtn);
-
-        // Cut button (only for text elements)
-        const cutBtn = document.createElement('button');
-        cutBtn.className = 'text-orange-500 hover:text-orange-700 focus:outline-none';
-        cutBtn.title = 'Couper le texte';
-        cutBtn.innerHTML = '<i class="fas fa-cut"></i>';
-        cutBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          // Copy text content to clipboard and delete
-          if (layer.ref && layer.ref.text) {
-            navigator.clipboard.writeText(layer.ref.text).then(() => {
-              const idx = textElements.indexOf(layer.ref);
-              if (idx !== -1) textElements.splice(idx, 1);
-              removeLayerById(layer.id);
-              renderLayersList();
-              redrawAll();
-              showNotification('Texte coupé et supprimé', 'success');
-            }).catch(err => {
-              console.error('Erreur lors de la coupe:', err);
-              showNotification('Erreur lors de la coupe', 'error');
-            });
-          }
-        });
-        rightDiv.appendChild(cutBtn);
-      }
 
       // Priority input
       const priorityInput = document.createElement('input');
@@ -13830,10 +10455,7 @@ function performSandboxedDownload(canvas, filename) {
       });
 
       // Click selects element
-      li.addEventListener('click', (e) => {
-        // Si on clique sur la checkbox ou le bouton de verrouillage, ne pas sélectionner
-        if (e.target.type === 'checkbox' || e.target.closest('button')) return;
-        
+      li.addEventListener('click', () => {
         if (layer.type === 'shape') {
           selectElement({type:'shape', index: shapes.indexOf(layer.ref), element: layer.ref});
         } else if (layer.type === 'image') {
@@ -13898,146 +10520,6 @@ function performSandboxedDownload(canvas, filename) {
 
       layersList.appendChild(li);
     });
-  }
-
-  // --- GESTION DES ACTIONS DE MASSE (SELECTION MULTIPLE) ---
-  
-  // Sélectionner tout
-  const selectAllLayersBtn = document.getElementById('selectAllLayersBtn');
-  if (selectAllLayersBtn) {
-      selectAllLayersBtn.addEventListener('click', () => {
-          const checkboxes = document.querySelectorAll('.layer-checkbox');
-          const allChecked = Array.from(checkboxes).every(cb => cb.checked);
-          checkboxes.forEach(cb => cb.checked = !allChecked);
-          updateBulkActionsPanel();
-      });
-  }
-  
-  // Mise à jour du panneau d'actions
-  function updateBulkActionsPanel() {
-      const checkedBoxes = document.querySelectorAll('.layer-checkbox:checked');
-      const bulkPanel = document.getElementById('bulkActionsPanel');
-      if (bulkPanel) {
-          if (checkedBoxes.length > 0) {
-              bulkPanel.classList.remove('hidden');
-              bulkPanel.classList.add('flex');
-          } else {
-              bulkPanel.classList.add('hidden');
-              bulkPanel.classList.remove('flex');
-          }
-      }
-  }
-  
-  // Actions de masse
-  const bulkProtectBtn = document.getElementById('bulkProtectBtn');
-  const bulkCopyBtn = document.getElementById('bulkCopyBtn');
-  const bulkDeleteBtn = document.getElementById('bulkDeleteBtn');
-  
-  if (bulkProtectBtn) {
-      bulkProtectBtn.addEventListener('click', () => {
-          const checkedIds = Array.from(document.querySelectorAll('.layer-checkbox:checked')).map(cb => cb.dataset.id);
-          layers.forEach(l => {
-              if (checkedIds.includes(l.id)) {
-                  l.locked = true;
-                  if (l.ref) l.ref.locked = true;
-              }
-          });
-          renderLayersList();
-          updateBulkActionsPanel();
-      });
-  }
-
-  if (bulkCopyBtn) {
-      bulkCopyBtn.addEventListener('click', () => {
-          const checkedIds = Array.from(document.querySelectorAll('.layer-checkbox:checked')).map(cb => cb.dataset.id);
-          const layersToCopy = layers.filter(l => checkedIds.includes(l.id));
-          
-          if (layersToCopy.length === 0) return;
-          
-          layersToCopy.forEach(l => {
-              if (l.type === 'shape') {
-                  const newShape = JSON.parse(JSON.stringify(l.ref));
-                  newShape.x += 20;
-                  newShape.y += 20;
-                  shapes.push(newShape);
-                  addLayer(l.name + ' (Copie)', 'shape', newShape);
-              } else if (l.type === 'image') {
-                  const originalImg = l.ref;
-                  const newImg = JSON.parse(JSON.stringify(originalImg));
-                  newImg.x += 20;
-                  newImg.y += 20;
-                  // Re-create Image object
-                  const imgObj = new Image();
-                  imgObj.src = originalImg.img.src;
-                  newImg.img = imgObj;
-                  importedImages.push(newImg);
-                  addLayer(l.name + ' (Copie)', 'image', newImg);
-              } else if (l.type === 'drawing') {
-                  const originalStroke = drawingStrokes.find(s => s.id === l.id);
-                  if (originalStroke) {
-                      const newStroke = JSON.parse(JSON.stringify(originalStroke));
-                      newStroke.id = Date.now() + Math.random().toString(36).substr(2, 9);
-                      newStroke.points.forEach(p => { p.x += 20; p.y += 20; });
-                      drawingStrokes.push(newStroke);
-                      addLayer(l.name + ' (Copie)', 'drawing', null, newStroke.id);
-                  }
-              } else if (l.type === 'text') {
-                  const newText = JSON.parse(JSON.stringify(l.ref));
-                  newText.x += 20;
-                  newText.y += 20;
-                  textElements.push(newText);
-                  addLayer(l.name + ' (Copie)', 'text', newText);
-              }
-          });
-          
-          renderLayersList();
-          redrawAll();
-          // Uncheck all
-          document.querySelectorAll('.layer-checkbox').forEach(cb => cb.checked = false);
-          updateBulkActionsPanel();
-      });
-  }
-  
-  if (bulkDeleteBtn) {
-      bulkDeleteBtn.addEventListener('click', () => {
-          if (!confirm('Supprimer les éléments sélectionnés ?')) return;
-          const checkedIds = Array.from(document.querySelectorAll('.layer-checkbox:checked')).map(cb => cb.dataset.id);
-          
-          checkedIds.forEach(id => {
-              const layer = layers.find(l => l.id === id);
-              if (layer) {
-                  if (layer.type === 'shape') {
-                      const idx = shapes.indexOf(layer.ref);
-                      if (idx > -1) shapes.splice(idx, 1);
-                  } else if (layer.type === 'image') {
-                      const idx = importedImages.indexOf(layer.ref);
-                      if (idx > -1) importedImages.splice(idx, 1);
-                  } else if (layer.type === 'drawing') {
-                      const idx = drawingStrokes.findIndex(s => s.id === layer.id);
-                      if (idx > -1) drawingStrokes.splice(idx, 1);
-                  } else if (layer.type === 'text') {
-                      const idx = textElements.indexOf(layer.ref);
-                      if (idx > -1) textElements.splice(idx, 1);
-                  }
-                  
-                  // Remove from layers array
-                  const lIdx = layers.indexOf(layer);
-                  if (lIdx > -1) layers.splice(lIdx, 1);
-              }
-          });
-          
-          renderLayersList();
-          updateBulkActionsPanel();
-          redrawAll();
-      });
-  }
-  
-  // Protection de la base (Background)
-  const protectBaseCheckbox = document.getElementById('protectBaseCheckbox');
-  if (protectBaseCheckbox) {
-      protectBaseCheckbox.addEventListener('change', (e) => {
-          window.isBaseLocked = e.target.checked;
-      });
   }
 
   // Check if two layers belong to the same group
@@ -14360,9 +10842,7 @@ function performSandboxedDownload(canvas, filename) {
         savedBlurEffect: blurEffect,
         savedShineIntensity: shineIntensity,
         savedShineColor: document.getElementById('shineColor').value,
-        savedShineOpacity: shineOpacity,
-        seed: Math.floor(Math.random() * 10000000),
-        texture: (window.textureOptions && window.textureOptions.enabled) ? JSON.parse(JSON.stringify(window.textureOptions)) : null
+        savedShineOpacity: shineOpacity
       };
     } else {
       currentDrawingStroke.points.push({x: x2, y: y2});
@@ -14415,11 +10895,6 @@ function performSandboxedDownload(canvas, filename) {
     
     // Effacer complètement le canvas
     const ctx = canvas.getContext('2d');
-    // **CORRECTION: Réinitialiser l'état du contexte pour éviter les bugs d'invisibilité**
-    ctx.globalAlpha = 1.0;
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.filter = 'none';
-    ctx.shadowBlur = 0;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
     // 1. Dessiner l'image de base si elle existe ET qu'elle n'est pas gérée par le système de layers
@@ -14434,24 +10909,8 @@ function performSandboxedDownload(canvas, filename) {
       // Dessiner tous les éléments dans l'ordre unifié de priorité
       sortedLayers.forEach(layer => {
         if (layer.type === 'image' && layer.ref && layer.ref.img) {
-          // Dessiner image avec filtres et rotation
-          ctx.save();
-          
-          // Appliquer la rotation si définie
-          if (layer.ref.rotation && layer.ref.rotation !== 0) {
-            const centerX = (layer.ref.x || 0) + layer.ref.width / 2;
-            const centerY = (layer.ref.y || 0) + layer.ref.height / 2;
-            ctx.translate(centerX, centerY);
-            ctx.rotate((layer.ref.rotation * Math.PI) / 180);
-            ctx.translate(-centerX, -centerY);
-          }
-          
-          if (layer.ref.filters) {
-             const f = layer.ref.filters;
-             ctx.filter = `brightness(${f.brightness}%) contrast(${f.contrast}%) saturate(${f.saturate}%) hue-rotate(${f.hue}deg) blur(${f.blur}px) sepia(${f.sepia}%) grayscale(${f.grayscale}%) invert(${f.invert}%) opacity(${f.opacity}%)`;
-          }
+          // Dessiner image
           ctx.drawImage(layer.ref.img, layer.ref.x || 0, layer.ref.y || 0, layer.ref.width, layer.ref.height);
-          ctx.restore();
         } else if (layer.type === 'shape' && layer.ref) {
           // Dessiner forme
           drawShape(ctx, layer.ref);
@@ -14476,8 +10935,7 @@ function performSandboxedDownload(canvas, filename) {
             }
             
             // **CORRECTION: Utiliser les styles sauvegardés avec le stroke ou les styles actuels**
-            const effectiveStyle = stroke.savedBrushStyle || currentBrushStyle;
-            if (shouldApplyStyle && effectiveStyle !== 'normal') {
+            if (shouldApplyStyle && (stroke.savedBrushStyle !== 'normal' || currentBrushStyle !== 'normal')) {
               // Sauvegarder les styles actuels
               const tempBrushStyle = currentBrushStyle;
               const tempStyleIntensity = styleIntensity;
@@ -14505,8 +10963,7 @@ function performSandboxedDownload(canvas, filename) {
                 const p1 = stroke.points[i-1];
                 const p2 = stroke.points[i];
                 // Utiliser applyArtisticBrushStyle directement avec les styles du stroke
-                const segmentSeed = (stroke.seed || 0) + i * 1000;
-                applyArtisticBrushStyle(ctx, p1.x, p1.y, p2.x, p2.y, stroke.tool || 'brush-basic', stroke.size || 5, stroke.color || '#000000', segmentSeed);
+                applyArtisticBrushStyle(ctx, p1.x, p1.y, p2.x, p2.y, stroke.tool || 'brush-basic', stroke.size || 5, stroke.color || '#000000');
               }
               
               // Restaurer les styles actuels
@@ -14523,52 +10980,16 @@ function performSandboxedDownload(canvas, filename) {
               ctx.lineCap = 'round';
               ctx.lineJoin = 'round';
               ctx.lineWidth = stroke.size || 5;
+              ctx.strokeStyle = stroke.color || '#000000';
               
-              // BEVEL 3D Effect for strokes
-              if (stroke.bevel && stroke.bevel.enabled) {
-                  const b = stroke.bevel;
-                  const shadowAngle = Math.atan2(b.lightY + 40, b.lightX + 40);
-                  const shadowDist = b.depth * 0.8;
-                  ctx.shadowColor = 'rgba(0,0,0,' + (0.3 + b.depth * 0.02) + ')';
-                  ctx.shadowBlur = b.blur * 2;
-                  ctx.shadowOffsetX = Math.cos(shadowAngle + Math.PI) * shadowDist;
-                  ctx.shadowOffsetY = Math.sin(shadowAngle + Math.PI) * shadowDist;
-              }
-              
-              // TEXTURE FOR STROKES
-              let strokeStyle = stroke.color || '#000000';
-              if (stroke.texture && stroke.texture.enabled && window.getTexturePattern) {
-                  const pattern = window.getTexturePattern(ctx, stroke.texture);
-                  if (pattern) {
-                      const matrix = new DOMMatrix();
-                      if (stroke.texture.scale) {
-                          const sc = stroke.texture.scale / 100;
-                          matrix.scaleSelf(sc, sc);
-                      }
-                      if (stroke.texture.angle) {
-                          matrix.rotateSelf(stroke.texture.angle);
-                      }
-                      pattern.setTransform(matrix);
-                      strokeStyle = pattern;
-                      
-                      if (stroke.texture.blendMode) {
-                          ctx.globalCompositeOperation = stroke.texture.blendMode;
-                      }
-                      if (stroke.texture.opacity !== undefined) {
-                          ctx.globalAlpha = stroke.texture.opacity / 100;
-                      }
-                  }
-              }
-              ctx.strokeStyle = strokeStyle;
-              
-              ctx.beginPath();
               for (let i = 1; i < stroke.points.length; i++) {
                 const p1 = stroke.points[i-1];
                 const p2 = stroke.points[i];
-                if (i === 1) ctx.moveTo(p1.x, p1.y);
+                ctx.beginPath();
+                ctx.moveTo(p1.x, p1.y);
                 ctx.lineTo(p2.x, p2.y);
+                ctx.stroke();
               }
-              ctx.stroke();
             }
             
             ctx.restore();
@@ -14741,8 +11162,8 @@ function performSandboxedDownload(canvas, filename) {
 
   // Expose API for debugging
   window.layersPanelAPI = {
-    get layers() { return layers; },
-    get layerGroups() { return layerGroups; },
+    layers,
+    layerGroups,
     drawingStrokes,
     textElements,
     addLayerForImage,
@@ -14757,365 +11178,6 @@ function performSandboxedDownload(canvas, filename) {
     selectDrawingStroke
   };
   
-  // --- Image Style Functions ---
-  window.updateSelectedImageStyle = function() {
-    if (selectedImageIndex === -1) return;
-    const imgObj = importedImages[selectedImageIndex];
-    if (!imgObj) return;
-
-    if (!imgObj.filters) imgObj.filters = {};
-    
-    imgObj.filters.brightness = document.getElementById('imgBrightness').value;
-    imgObj.filters.contrast = document.getElementById('imgContrast').value;
-    imgObj.filters.saturate = document.getElementById('imgSaturate').value;
-    imgObj.filters.hue = document.getElementById('imgHue').value;
-    imgObj.filters.blur = document.getElementById('imgBlur').value;
-    imgObj.filters.sepia = document.getElementById('imgSepia').value;
-    imgObj.filters.grayscale = document.getElementById('imgGrayscale').value;
-    imgObj.filters.invert = document.getElementById('imgInvert').value;
-    imgObj.filters.opacity = document.getElementById('imgOpacity').value;
-
-    redrawAll();
-  };
-
-  window.resetImageStyles = function() {
-    if (selectedImageIndex === -1) return;
-    const imgObj = importedImages[selectedImageIndex];
-    if (!imgObj) return;
-
-    imgObj.filters = {
-      brightness: 100, contrast: 100, saturate: 100, hue: 0,
-      blur: 0, sepia: 0, grayscale: 0, invert: 0, opacity: 100
-    };
-    
-    loadSelectedImageStyles();
-    redrawAll();
-  };
-
-  window.loadSelectedImageStyles = function() {
-    if (selectedImageIndex === -1) return;
-    const imgObj = importedImages[selectedImageIndex];
-    if (!imgObj) return;
-
-    const f = imgObj.filters || {
-      brightness: 100, contrast: 100, saturate: 100, hue: 0,
-      blur: 0, sepia: 0, grayscale: 0, invert: 0, opacity: 100
-    };
-
-    document.getElementById('imgBrightness').value = f.brightness;
-    document.getElementById('imgBrightnessVal').textContent = f.brightness;
-    
-    document.getElementById('imgContrast').value = f.contrast;
-    document.getElementById('imgContrastVal').textContent = f.contrast;
-    
-    document.getElementById('imgSaturate').value = f.saturate;
-    document.getElementById('imgSaturateVal').textContent = f.saturate;
-    
-    document.getElementById('imgHue').value = f.hue;
-    document.getElementById('imgHueVal').textContent = f.hue;
-    
-    document.getElementById('imgBlur').value = f.blur;
-    document.getElementById('imgBlurVal').textContent = f.blur;
-    
-    document.getElementById('imgSepia').value = f.sepia;
-    document.getElementById('imgSepiaVal').textContent = f.sepia;
-    
-    document.getElementById('imgGrayscale').value = f.grayscale;
-    document.getElementById('imgGrayscaleVal').textContent = f.grayscale;
-    
-    document.getElementById('imgInvert').value = f.invert;
-    document.getElementById('imgInvertVal').textContent = f.invert;
-    
-    document.getElementById('imgOpacity').value = f.opacity;
-    document.getElementById('imgOpacityVal').textContent = f.opacity;
-  };
-
-  // --- GESTION BIBLIOTHÈQUE / CLIPBOARD ---
-  window.copyObjectToLibrary = function() {
-    let selectedItem = null;
-    let type = '';
-    
-    if (selectedImageIndex !== -1) {
-        selectedItem = importedImages[selectedImageIndex];
-        type = 'image';
-        // Assurer que src est sauvegardé
-        if (!selectedItem.src && selectedItem.img) selectedItem.src = selectedItem.img.src;
-    } else if (selectedTextIndex !== -1) {
-        selectedItem = window.textElements[selectedTextIndex];
-        type = 'text';
-    } else if (selectedShapeIndex !== -1) {
-        selectedItem = shapes[selectedShapeIndex];
-        type = 'shape';
-    } else if (typeof isElementSelected !== 'undefined' && isElementSelected && selectedElement) {
-        // Fallback pour le système de sélection unifié
-        if (['shape', 'text', 'image'].includes(selectedElementType)) {
-            selectedItem = selectedElement;
-            type = selectedElementType;
-            if (type === 'image') {
-                 if (!selectedItem.src && selectedItem.img) selectedItem.src = selectedItem.img.src;
-            }
-        }
-    }
-    
-    if (!selectedItem) {
-        alert("Aucun objet sélectionné !");
-        return;
-    }
-    
-    // Nettoyage pour éviter références circulaires
-    const dataToSave = JSON.parse(JSON.stringify(selectedItem, (key, value) => {
-        if (key === 'img' || key === 'imgObj') return undefined; // Ne pas sauvegarder l'élément DOM
-        return value;
-    }));
-    
-    const itemToSave = {
-        id: Date.now(),
-        type: type,
-        data: dataToSave,
-        timestamp: Date.now()
-    };
-    
-    let library = [];
-    try {
-        library = JSON.parse(localStorage.getItem('propaint_library') || '[]');
-    } catch(e) { library = []; }
-    
-    library.unshift(itemToSave);
-    if (library.length > 50) library.pop();
-    
-    try {
-        localStorage.setItem('propaint_library', JSON.stringify(library));
-        
-        // Feedback visuel
-        const btn = document.querySelector('button[onclick="copyObjectToLibrary()"]');
-        if(btn) {
-            const originalText = btn.innerHTML;
-            btn.innerHTML = '<i class="fas fa-check"></i> Copié!';
-            setTimeout(() => btn.innerHTML = originalText, 1000);
-        }
-        
-        showClipboardModal();
-    } catch(e) {
-        alert("Erreur: Stockage local plein ou image trop grande.");
-    }
-  };
-  
-  window.showClipboardModal = function() {
-    document.getElementById('clipboardModal').classList.remove('hidden');
-    renderClipboardGrid();
-  };
-  
-  window.renderClipboardGrid = function() {
-    const grid = document.getElementById('clipboardGrid');
-    grid.innerHTML = '';
-    let library = [];
-    try { library = JSON.parse(localStorage.getItem('propaint_library') || '[]'); } catch(e){}
-    
-    if (library.length === 0) {
-        grid.innerHTML = '<div class="col-span-full text-center text-gray-500 py-10">Aucun élément copié</div>';
-        return;
-    }
-    
-    library.forEach((item, index) => {
-        const card = document.createElement('div');
-        card.className = 'bg-[#3a3a3a] p-2 rounded flex flex-col items-center border border-[#555] relative group hover:border-[#00aaff] transition';
-        
-        const previewContainer = document.createElement('div');
-        previewContainer.className = 'w-full h-24 bg-checkerboard mb-2 flex items-center justify-center overflow-hidden rounded relative';
-        
-        if (item.type === 'image') {
-            const img = document.createElement('img');
-            img.src = item.data.src;
-            img.className = 'max-w-full max-h-full object-contain';
-            previewContainer.appendChild(img);
-        } else if (item.type === 'text') {
-            const span = document.createElement('span');
-            span.textContent = "T";
-            span.className = "text-4xl font-bold text-black";
-            if (item.data.color) span.style.color = item.data.color;
-            previewContainer.appendChild(span);
-        } else if (item.type === 'shape') {
-            if (item.data.type === 'shape-img' && item.data.imgSrc) {
-                const img = document.createElement('img');
-                img.src = item.data.imgSrc;
-                img.className = 'max-w-full max-h-full object-contain';
-                previewContainer.appendChild(img);
-            } else {
-                const cvs = document.createElement('canvas');
-                cvs.width = 80; cvs.height = 80;
-                const ctx = cvs.getContext('2d');
-                ctx.fillStyle = item.data.fillColor || item.data.color || '#00aaff';
-                if (item.data.type === 'shape-circle') {
-                    ctx.beginPath(); ctx.arc(40, 40, 30, 0, Math.PI*2); ctx.fill();
-                } else {
-                    ctx.fillRect(10, 10, 60, 60);
-                }
-                previewContainer.appendChild(cvs);
-            }
-        }
-        
-        card.appendChild(previewContainer);
-        
-        const label = document.createElement('div');
-        label.textContent = (item.data.type || item.type).replace('shape-', '').toUpperCase();
-        label.className = 'text-[10px] mb-2 font-bold text-gray-400 truncate w-full text-center';
-        card.appendChild(label);
-        
-        const pasteBtn = document.createElement('button');
-        pasteBtn.innerHTML = '<i class="fas fa-paste mr-1"></i> COLLER';
-        pasteBtn.className = 'bg-blue-600 hover:bg-blue-500 text-white text-xs px-3 py-1 rounded w-full font-bold';
-        pasteBtn.onclick = () => pasteObjectFromLibrary(item);
-        card.appendChild(pasteBtn);
-        
-        const delBtn = document.createElement('button');
-        delBtn.innerHTML = '<i class="fas fa-times"></i>';
-        delBtn.className = 'absolute top-1 right-1 text-red-500 hover:text-red-400 bg-[#252525] rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition shadow-md';
-        delBtn.onclick = (e) => {
-            e.stopPropagation();
-            library.splice(index, 1);
-            localStorage.setItem('propaint_library', JSON.stringify(library));
-            renderClipboardGrid();
-        };
-        card.appendChild(delBtn);
-        
-        grid.appendChild(card);
-    });
-  };
-  
-  window.pasteObjectFromLibrary = function(item) {
-    const pasteX = Math.abs(window.canvasOffset.x / window.zoomLevel) + 100;
-    const pasteY = Math.abs(window.canvasOffset.y / window.zoomLevel) + 100;
-
-    if (item.type === 'shape') {
-        const newShape = JSON.parse(JSON.stringify(item.data));
-        newShape.id = Date.now();
-        newShape.x = pasteX; newShape.y = pasteY;
-        if (newShape.imgObj) delete newShape.imgObj;
-        shapes.push(newShape);
-        // Sélectionner
-        selectedShapeIndex = shapes.length - 1;
-        selectedElementType = 'shape';
-        selectedElement = newShape;
-        if(window.updateSelectionUI) window.updateSelectionUI();
-    } else if (item.type === 'text') {
-        const newText = JSON.parse(JSON.stringify(item.data));
-        newText.id = Date.now();
-        newText.x = pasteX; newText.y = pasteY;
-        textElements.push(newText);
-        // Sélectionner
-        selectedTextIndex = textElements.length - 1;
-        selectedElementType = 'text';
-        activeTextElement = newText;
-        selectedElement = newText;
-        if(window.updateSelectionUI) window.updateSelectionUI();
-    } else if (item.type === 'image') {
-        const newImgData = JSON.parse(JSON.stringify(item.data));
-        const img = new Image();
-        img.onload = () => {
-            newImgData.img = img;
-            newImgData.id = Date.now();
-            newImgData.x = pasteX; newImgData.y = pasteY;
-            importedImages.push(newImgData);
-            
-            selectedImageIndex = importedImages.length - 1;
-            selectedElementType = 'image';
-            selectedElement = newImgData;
-            
-            redrawAll();
-            if(window.updateSelectionUI) window.updateSelectionUI();
-        };
-        if (newImgData.src) img.src = newImgData.src;
-    }
-    redrawAll();
-    document.getElementById('clipboardModal').classList.add('hidden');
-  };
-
-  // --- GESTION FORMES IMG ---
-  window.loadFormeImgs = function() {
-    fetch('?action=list_formeimgs')
-        .then(r => r.json())
-        .then(files => {
-            const container = document.getElementById('formeImgList');
-            if(!container) return;
-            container.innerHTML = '';
-            files.forEach(f => {
-                const div = document.createElement('div');
-                div.className = 'aspect-square bg-[#333] border border-[#555] hover:border-white cursor-pointer flex items-center justify-center overflow-hidden relative';
-                const img = document.createElement('img');
-                img.src = f;
-                img.className = 'max-w-full max-h-full object-contain';
-                div.appendChild(img);
-                div.onclick = () => {
-                    window.selectedFormeImgSrc = f;
-                    Array.from(container.children).forEach(c => c.classList.remove('border-blue-500', 'ring-2', 'ring-blue-500'));
-                    div.classList.add('border-blue-500', 'ring-2', 'ring-blue-500');
-                };
-                container.appendChild(div);
-            });
-        });
-  };
-  
-  const formeImgInput = document.getElementById('formeImgInput');
-  if(formeImgInput) {
-      formeImgInput.addEventListener('change', function(e) {
-        if (this.files && this.files[0]) {
-            const formData = new FormData();
-            formData.append('formeImgUpload', this.files[0]);
-            fetch('', { method: 'POST', body: formData })
-                .then(r => r.json())
-                .then(data => {
-                    if (data.success) { loadFormeImgs(); } 
-                    else { alert(data.message); }
-                });
-        }
-      });
-  }
-
-  // Initial load
-  loadFormeImgs();
-
-  window.updateSelectedText = function() {
-    if (!activeTextElement) return;
-    
-    const is3D = document.getElementById('text3DActive').checked;
-    activeTextElement.is3D = is3D;
-    
-    if (is3D) {
-        const perspective = document.querySelector('input[name="textPerspective"]:checked');
-        if (perspective) activeTextElement.perspective = parseInt(perspective.value);
-        
-        const depth = document.querySelector('input[name="textDepth"]:checked');
-        if (depth) activeTextElement.depth = parseInt(depth.value);
-        
-        const texture = document.querySelector('input[name="textTexture"]:checked');
-        if (texture) activeTextElement.texture3d = texture.value;
-    }
-    
-    const isRevel = document.getElementById('textRevelActive').checked;
-    activeTextElement.isRevel = isRevel;
-    
-    if (isRevel) {
-        const intensity = document.querySelector('input[name="textRevelIntensity"]:checked');
-        if (intensity) activeTextElement.revelIntensity = parseInt(intensity.value);
-    }
-    
-    redrawAll();
-  };
-
-  window.updateSelectedShape = function() {
-    if (selectedElementType !== 'shape' || !selectedElement) return;
-    
-    const isRevel = document.getElementById('shapeRevelActive').checked;
-    selectedElement.isRevel = isRevel;
-    
-    if (isRevel) {
-        const intensity = document.querySelector('input[name="shapeRevelIntensity"]:checked');
-        if (intensity) selectedElement.revelIntensity = parseInt(intensity.value);
-    }
-    
-    redrawAll();
-  };
-
   // **INITIALISATION AUTOMATIQUE D'UN CANVAS VIDE 1000x1000**
   window.addEventListener('load', () => {
     if (!imageLoaded) {
@@ -15144,723 +11206,556 @@ function performSandboxedDownload(canvas, filename) {
       setTimeout(() => saveState(), 100);
       
       console.log('Canvas 1000x1000 initialisé et prêt pour le dessin !');
-      
-      // **NOUVEAU: Adapter le canvas à l'écran au démarrage**
-      setTimeout(() => fitCanvasToScreen(), 100);
     }
-    // ==== GESTION DES OPTIONS DE STYLE DYNAMIQUES ====
-    window.shapeStyleOptions = {};
-
-    function updateShapeStyleOptionsUI() {
-        const container = document.getElementById('shapeStyleOptionsContainer');
-        const styleSelect = document.getElementById('shapeStyle');
-        if (!container || !styleSelect) return;
-        
-        const style = styleSelect.value;
-        container.innerHTML = '';
-        
-        // Définition des options par style
-        const optionsMap = {
-            'neon-advanced': [
-                { type: 'color', label: 'Couleur Lueur', key: 'glowColor', default: '#00ff00' },
-                { type: 'color', label: 'Couleur Cœur', key: 'coreColor', default: '#ffffff' },
-                { type: 'range', label: 'Intensité', key: 'intensity', min: 5, max: 50, default: 20 },
-                { type: 'range', label: 'Opacité', key: 'opacity', min: 0, max: 100, default: 100 }
-            ],
-            'crayon-style': [
-                { type: 'range', label: 'Texture', key: 'texture', min: 0.5, max: 3, step: 0.1, default: 1 },
-                { type: 'range', label: 'Pression', key: 'pressure', min: 10, max: 100, default: 60 },
-                { type: 'color', label: 'Couleur Papier', key: 'paperColor', default: '#ffffff' },
-                { type: 'range', label: 'Grain', key: 'grain', min: 0, max: 100, default: 50 }
-            ],
-            'glitch-style': [
-                { type: 'range', label: 'Décalage', key: 'shift', min: 1, max: 20, default: 5 },
-                { type: 'range', label: 'Bruit', key: 'noise', min: 0, max: 100, default: 20 },
-                { type: 'color', label: 'Couleur 1', key: 'color1', default: '#ff0000' },
-                { type: 'color', label: 'Couleur 2', key: 'color2', default: '#00ffff' }
-            ],
-            '3d-block': [
-                { type: 'range', label: 'Profondeur', key: 'depth', min: 0, max: 50, default: 10 },
-                { type: 'range', label: 'Angle', key: 'angle', min: 0, max: 360, default: 45 },
-                { type: 'color', label: 'Ombre', key: 'shadowColor', default: '#000000' },
-                { type: 'range', label: 'Lumière', key: 'light', min: 0, max: 100, default: 50 }
-            ],
-            'pointillism': [
-                { type: 'range', label: 'Densité', key: 'density', min: 10, max: 200, default: 50 },
-                { type: 'range', label: 'Taille Point', key: 'dotSize', min: 1, max: 10, default: 2 },
-                { type: 'range', label: 'Variation', key: 'variation', min: 0, max: 50, default: 10 },
-                { type: 'color', label: 'Fond', key: 'bgColor', default: 'transparent' }
-            ]
-        };
-        
-        if (optionsMap[style]) {
-            container.classList.remove('hidden');
-            const title = document.createElement('h4');
-            title.className = 'text-xs font-bold text-[#00aaff] mb-2';
-            title.textContent = 'Options ' + style;
-            container.appendChild(title);
-            
-            optionsMap[style].forEach(opt => {
-                const div = document.createElement('div');
-                div.className = 'mb-2';
-                
-                const label = document.createElement('label');
-                label.className = 'block text-[10px] text-gray-400 mb-1';
-                label.textContent = opt.label;
-                div.appendChild(label);
-                
-                let input;
-                if (opt.type === 'range') {
-                    input = document.createElement('input');
-                    input.type = 'range';
-                    input.className = 'w-full h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer';
-                    input.min = opt.min;
-                    input.max = opt.max;
-                    input.step = opt.step || 1;
-                    input.value = opt.default;
-                } else if (opt.type === 'color') {
-                    input = document.createElement('input');
-                    input.type = 'color';
-                    input.className = 'w-full h-6 border-none p-0 bg-transparent cursor-pointer';
-                    input.value = opt.default;
-                }
-                
-                // Initialiser l'objet d'options global
-                if (!window.shapeStyleOptions[style]) window.shapeStyleOptions[style] = {};
-                window.shapeStyleOptions[style][opt.key] = opt.default;
-                
-                input.oninput = (e) => {
-                    window.shapeStyleOptions[style][opt.key] = e.target.value;
-                    if (window.updateSelectedShape) window.updateSelectedShape(); // Mise à jour temps réel si sélectionné
-                };
-                
-                div.appendChild(input);
-                container.appendChild(div);
-            });
-        } else {
-            container.classList.add('hidden');
-        }
-    }
-
-    // Initialisation des écouteurs
-    document.addEventListener('DOMContentLoaded', () => {
-        const styleSelect = document.getElementById('shapeStyle');
-        if (styleSelect) {
-            styleSelect.addEventListener('change', updateShapeStyleOptionsUI);
-            // Init initial
-            updateShapeStyleOptionsUI();
-        }
-    });
-
-    // ==== GESTION DES FORMES IMG (LOGIQUE) ====
-    
-    // Variable globale pour stocker l'URL de l'image de forme sélectionnée
-    window.currentFormeImgUrl = null;
-    window.shapeImgOptions = { colorize: false, color: '#ff0000', intensity: 0.5, blendMode: 'source-in' };
-
-    window.loadFormeImages = function() {
-        const grid = document.getElementById('formeImgGrid');
-        if (!grid) return;
-        
-        grid.innerHTML = '<div class="text-xs text-gray-500 col-span-4 text-center py-2"><i class="fas fa-spinner fa-spin"></i> Chargement...</div>';
-        
-        fetch('propaint.php?action=list_formeimgs')
-            .then(response => response.json())
-            .then(files => {
-                grid.innerHTML = '';
-                if (files.length === 0) {
-                    grid.innerHTML = '<div class="text-xs text-gray-500 col-span-4 text-center py-2">Aucune image trouvée</div>';
-                    return;
-                }
-                
-                files.forEach(fileUrl => {
-                    const div = document.createElement('div');
-                    div.className = 'aspect-square bg-[#333] border border-[#444] hover:border-[#00aaff] cursor-pointer rounded flex items-center justify-center overflow-hidden relative group';
-                    
-                    const img = document.createElement('img');
-                    img.src = fileUrl;
-                    img.className = 'max-w-full max-h-full object-contain';
-                    
-                    div.appendChild(img);
-                    
-                    // Indicateur de sélection
-                    if (window.currentFormeImgUrl === fileUrl) {
-                        div.classList.add('border-[#00aaff]', 'ring-1', 'ring-[#00aaff]');
-                    }
-                    
-                    div.onclick = () => {
-                        // Désélectionner les autres
-                        Array.from(grid.children).forEach(c => c.classList.remove('border-[#00aaff]', 'ring-1', 'ring-[#00aaff]'));
-                        // Sélectionner celui-ci
-                        div.classList.add('border-[#00aaff]', 'ring-1', 'ring-[#00aaff]');
-                        window.currentFormeImgUrl = fileUrl;
-                        console.log('Forme Img sélectionnée:', fileUrl);
-                    };
-                    
-                    grid.appendChild(div);
-                });
-            })
-            .catch(err => {
-                console.error('Erreur chargement images:', err);
-                grid.innerHTML = '<div class="text-xs text-red-500 col-span-4 text-center py-2">Erreur</div>';
-            });
-    };
-
-    // Initialisation des écouteurs pour Forme Img
-    // (On utilise setTimeout pour s'assurer que le DOM est prêt si le script est exécuté avant)
-    setTimeout(() => {
-        const addBtn = document.getElementById('addFormeImgBtn');
-        const input = document.getElementById('formeImgInput');
-        const refreshBtn = document.getElementById('refreshFormeImgBtn');
-        
-        if (addBtn && input) {
-            // Eviter les doublons d'écouteurs
-            addBtn.onclick = () => input.click();
-            
-            input.onchange = () => {
-                if (input.files.length > 0) {
-                    const formData = new FormData();
-                    formData.append('formeImgUpload', input.files[0]);
-                    
-                    // Feedback visuel
-                    const originalText = addBtn.innerHTML;
-                    addBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Upload...';
-                    addBtn.disabled = true;
-                    
-                    fetch('propaint.php', {
-                        method: 'POST',
-                        body: formData
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            window.loadFormeImages();
-                        } else {
-                            alert('Erreur: ' + data.message);
-                        }
-                    })
-                    .catch(err => {
-                        console.error(err);
-                        alert('Erreur réseau lors de l\'upload');
-                    })
-                    .finally(() => {
-                        addBtn.innerHTML = originalText;
-                        addBtn.disabled = false;
-                        input.value = ''; // Reset
-                    });
-                }
-            };
-        }
-        
-        if (refreshBtn) {
-            refreshBtn.onclick = window.loadFormeImages;
-        }
-        
-        // Charger les images au démarrage
-        window.loadFormeImages();
-    }, 1000);
-
-    // Hook dans le changement de forme pour recharger si nécessaire
-    const subShapeSelectRef = document.getElementById('subShapeSelect');
-    if (subShapeSelectRef) {
-        subShapeSelectRef.addEventListener('change', () => {
-            if (subShapeSelectRef.value === 'shape-img') {
-                window.loadFormeImages();
-            }
-        });
-    }
-
   });
 })();
 </script>
 
+<script> --- IGNORE ---
+    // ==== CORRECTIONS DES BUGS MENTIONNÉS ====
 
-<!-- Clipboard Modal -->
-<div id="clipboardModal" class="fixed inset-0 bg-black bg-opacity-80 z-50 hidden flex items-center justify-center">
-    <div class="bg-[#2d2d2d] w-[90%] h-[90%] rounded-lg flex flex-col relative border border-[#555]">
-        <button onclick="document.getElementById('clipboardModal').classList.add('hidden')" class="absolute top-2 right-2 text-red-500 hover:text-red-400 text-2xl z-50">
-            <i class="fas fa-times"></i>
+// 1. CORRECTION: Système de sélection et rotation pour les textes (popup)
+function createTextSelectionPopup(x, y, element) {
+    // Supprimer toute popup existante
+    const existingPopup = document.getElementById('textSelectionPopup');
+    if (existingPopup) existingPopup.remove();
+    
+    // Créer la popup de sélection pour texte
+    const popup = document.createElement('div');
+    popup.id = 'textSelectionPopup';
+    popup.className = 'absolute bg-gray-800 text-white rounded-lg shadow-lg p-2 flex gap-1 z-50';
+    popup.style.pointerEvents = 'auto';
+    popup.style.left = `${x}px`;
+    popup.style.top = `${y}px`;
+    
+    popup.innerHTML = `
+        <button onclick="cutSelectedElement()" class="p-1 hover:bg-gray-700 rounded" title="Couper">
+            ✂️
         </button>
-        <h2 class="text-xl p-4 border-b border-[#555] text-[#f0d98c]">Bibliothèque d'objets copiés</h2>
-        <div id="clipboardGrid" class="flex-grow p-4 overflow-y-auto grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-            <!-- Items injected here -->
-        </div>
-    </div>
-
-<script>
-    // ==== ADVANCED EFFECTS LOGIC ====
-
-    function initAdvancedEffectsUI() {
-        const effectTypeSelect = document.getElementById('advancedEffectType');
-        const applyBtn = document.getElementById('applyAdvancedEffect');
-        
-        if (effectTypeSelect) {
-            effectTypeSelect.addEventListener('change', function() {
-                // Hide all controls
-                document.querySelectorAll('.effect-controls').forEach(el => el.classList.add('hidden'));
-                
-                // Show selected control
-                const selected = this.value;
-                if (selected !== 'none') {
-                    const controlDiv = document.getElementById(`effectControls-${selected}`);
-                    if (controlDiv) controlDiv.classList.remove('hidden');
-                }
-            });
-        }
-
-        // Presets Handlers
-        const presets = {
-            '3d-rotation': {
-                'A': { x: 0, y: 30 },
-                'B': { x: 30, y: 0 },
-                'C': { x: -30, y: 0 },
-                'D': { x: 0, y: -30 }
-            },
-            'wavy': {
-                'A': { deg: 30, amt: 1 },
-                'B': { deg: 30, amt: 2 },
-                'C': { deg: -30, amt: 1 },
-                'D': { deg: -30, amt: 2 }
-            },
-            'reflection': {
-                'A': { size: 25, op: 50, margin: 0 },
-                'B': { size: 25, op: 75, margin: 0 },
-                'C': { size: 25, op: 50, margin: 5 },
-                'D': { size: 100, op: 50, margin: 0 }
-            },
-            'bevel': {
-                'A': { size: 5, angle: 45, depth: 100 },
-                'B': { size: 10, angle: 45, depth: 100 },
-                'C': { size: 10, angle: 135, depth: 100 },
-                'D': { size: 20, angle: 135, depth: 50 }
-            }
-        };
-
-        // 3D Presets
-        document.getElementById('preset3d')?.addEventListener('change', function() {
-            if (this.value !== 'custom' && presets['3d-rotation'][this.value]) {
-                const p = presets['3d-rotation'][this.value];
-                document.getElementById('rot3dX').value = p.x;
-                document.getElementById('rot3dY').value = p.y;
-            }
-        });
-
-        // Wavy Presets
-        document.getElementById('presetWavy')?.addEventListener('change', function() {
-            if (this.value !== 'custom' && presets['wavy'][this.value]) {
-                const p = presets['wavy'][this.value];
-                document.getElementById('waveDegree').value = p.deg;
-                document.getElementById('waveAmount').value = p.amt;
-            }
-        });
-
-        // Reflection Presets
-        document.getElementById('presetReflection')?.addEventListener('change', function() {
-            if (this.value !== 'custom' && presets['reflection'][this.value]) {
-                const p = presets['reflection'][this.value];
-                document.getElementById('reflectSize').value = p.size;
-                document.getElementById('reflectOpacity').value = p.op;
-                document.getElementById('reflectMargin').value = p.margin;
-            }
-        });
-
-        // Bevel Presets
-        document.getElementById('presetBevel')?.addEventListener('change', function() {
-            if (this.value !== 'custom' && presets['bevel'][this.value]) {
-                const p = presets['bevel'][this.value];
-                document.getElementById('bevelSize').value = p.size;
-                document.getElementById('bevelAngle').value = p.angle;
-                document.getElementById('bevelDepth').value = p.depth;
-            }
-        });
-
-        if (applyBtn) {
-            applyBtn.addEventListener('click', applyAdvancedEffectToSelection);
-        }
-    }
-
-    function applyAdvancedEffectToSelection() {
-        const type = document.getElementById('advancedEffectType').value;
-        let effectData = { type: type };
-
-        if (type === '3d-rotation') {
-            effectData.x = parseFloat(document.getElementById('rot3dX').value) || 0;
-            effectData.y = parseFloat(document.getElementById('rot3dY').value) || 0;
-        } else if (type === 'wavy') {
-            effectData.degree = parseFloat(document.getElementById('waveDegree').value) || 0;
-            effectData.amount = parseFloat(document.getElementById('waveAmount').value) || 0;
-        } else if (type === 'bend') {
-            effectData.preset = document.getElementById('presetBend').value;
-            effectData.amount = parseFloat(document.getElementById('bendAmount').value) || 0;
-        } else if (type === 'reflection') {
-            effectData.size = parseFloat(document.getElementById('reflectSize').value) || 50;
-            effectData.opacity = parseFloat(document.getElementById('reflectOpacity').value) || 50;
-            effectData.margin = parseFloat(document.getElementById('reflectMargin').value) || 0;
-        } else if (type === 'bevel') {
-            effectData.size = parseFloat(document.getElementById('bevelSize').value) || 5;
-            effectData.angle = parseFloat(document.getElementById('bevelAngle').value) || 45;
-            effectData.depth = parseFloat(document.getElementById('bevelDepth').value) || 100;
-        }
-
-        // Apply to selected element (Unified Selection System)
-        if (window.selectedElement) {
-            window.selectedElement.advancedEffect = effectData;
-            redrawAll();
-            showNotification('Effect applied to selection!', 'success');
-        } else if (window.selectedDrawingStrokeId) {
-             const stroke = drawingStrokes.find(s => s.id === window.selectedDrawingStrokeId);
-             if (stroke) {
-                 stroke.advancedEffect = effectData;
-                 redrawAll();
-                 showNotification('Effect applied to drawing!', 'success');
-             }
-        } else {
-            // Fallback for legacy selection variables if needed, or just alert
-            if (typeof selectedShapeIndex !== 'undefined' && selectedShapeIndex !== -1 && shapes[selectedShapeIndex]) {
-                shapes[selectedShapeIndex].advancedEffect = effectData;
-                redrawAll();
-                showNotification('Effect applied to shape!', 'success');
-            } else if (typeof selectedImageIndex !== 'undefined' && selectedImageIndex !== -1 && importedImages[selectedImageIndex]) {
-                importedImages[selectedImageIndex].advancedEffect = effectData;
-                redrawAll();
-                showNotification('Effect applied to image!', 'success');
-            } else {
-                alert('Please select an element first.');
-            }
-        }
-    }
-
-    // Initialize
-    document.addEventListener('DOMContentLoaded', initAdvancedEffectsUI);
-
-    // Helper functions for rendering
-    window.applyAdvancedEffectTransform = function(ctx, effect, width, height) {
-        if (!effect || effect.type === 'none') return;
-
-        if (effect.type === '3d-rotation') {
-            const radX = (effect.x * Math.PI) / 180;
-            const radY = (effect.y * Math.PI) / 180;
-            const scaleX = Math.cos(radY);
-            const scaleY = Math.cos(radX);
-            
-            // Context is already centered by caller
-            ctx.scale(scaleX, scaleY);
-        }
-    };
-
-    window.drawAdvancedEffectPost = function(ctx, effect, x, y, width, height, drawCallback) {
-        if (!effect || effect.type === 'none') return;
-
-        if (effect.type === 'reflection') {
-            ctx.save();
-            const size = (effect.size / 100) * height;
-            const margin = effect.margin;
-            
-            // Move to bottom of object
-            ctx.translate(x, y + height + margin);
-            ctx.scale(1, -1); 
-            ctx.translate(-x, -y - height); 
-            
-            ctx.globalAlpha = (effect.opacity / 100) * 0.5; 
-            
-            // Clip to reflection size
-            ctx.beginPath();
-            ctx.rect(x, y + height, width, size);
-            ctx.clip();
-            
-            drawCallback();
-            
-            ctx.restore();
-        }
-        
-        if (effect.type === 'bevel') {
-            ctx.save();
-            ctx.beginPath();
-            ctx.rect(x, y, width, height);
-            ctx.clip();
-            
-            const size = effect.size;
-            const angle = (effect.angle * Math.PI) / 180;
-            const depth = effect.depth / 100;
-            
-            const offX = Math.cos(angle) * size;
-            const offY = Math.sin(angle) * size;
-            
-            ctx.shadowColor = `rgba(0,0,0,${depth})`;
-            ctx.shadowBlur = size;
-            ctx.shadowOffsetX = -offX;
-            ctx.shadowOffsetY = -offY;
-            ctx.strokeStyle = 'rgba(0,0,0,0)';
-            ctx.strokeRect(x - size, y - size, width + size*2, height + size*2);
-            
-            ctx.shadowColor = `rgba(255,255,255,${depth})`;
-            ctx.shadowOffsetX = offX;
-            ctx.shadowOffsetY = offY;
-            ctx.strokeRect(x - size, y - size, width + size*2, height + size*2);
-            
-            ctx.restore();
-        }
-    };
-
-    // ==== TEXTURE SYSTEM ====
-    
-    window.textureOptions = {
-        enabled: false,
-        source: 'pattern',
-        patternId: 1,
-        blendMode: 'source-over',
-        opacity: 100,
-        scale: 100,
-        angle: 0,
-        spacing: 10,
-        scatter: 0
-    };
-
-    const textureCache = {};
-    
-    window.getTexturePattern = function(ctx, options) {
-        if (!options || !options.enabled) return null;
-        
-        let url;
-        if (options.filename) {
-            url = options.filename;
-        } else {
-            const id = options.patternId;
-            url = `texture/texture${id}.png`; 
-        }
-        
-        if (!textureCache[url]) {
-            const img = new Image();
-            img.src = url;
-            textureCache[url] = { img: img, pattern: null };
-            img.onload = function() {
-                if (window.redrawAll) window.redrawAll();
-            };
-            img.onerror = function() {
-                // Try jpg/webp if png fails and we constructed the URL manually
-                if (!options.filename && url.endsWith('.png')) {
-                     // Simple fallback chain
-                     const jpgUrl = url.replace('.png', '.jpg');
-                     const webpUrl = url.replace('.png', '.webp');
-                     
-                     // Try loading jpg
-                     const imgJpg = new Image();
-                     imgJpg.src = jpgUrl;
-                     imgJpg.onload = function() {
-                         textureCache[url].img = imgJpg;
-                         if (window.redrawAll) window.redrawAll();
-                     };
-                     imgJpg.onerror = function() {
-                         // Try webp
-                         const imgWebp = new Image();
-                         imgWebp.src = webpUrl;
-                         imgWebp.onload = function() {
-                             textureCache[url].img = imgWebp;
-                             if (window.redrawAll) window.redrawAll();
-                         };
-                     };
-                }
-            };
-        }
-        
-        const cache = textureCache[url];
-        if (cache.img.complete && cache.img.naturalWidth > 0) {
-            // IMPORTANT: Créer un nouveau pattern pour chaque contexte différent
-            // Les patterns Canvas sont liés au contexte qui les crée
-            // Donc pour l'export on doit recréer le pattern avec exportCtx
-            const pattern = ctx.createPattern(cache.img, 'repeat');
-            return pattern;
-        }
-        return null;
-    };
-
-    function initTextureUI() {
-        // Create Texture Button in Left Toolbar
-        const leftToolbar = document.getElementById('leftToolbar');
-        const textureBtn = document.createElement('button');
-        textureBtn.className = 'w-10 h-10 flex items-center justify-center text-[#c0c0c0] hover:bg-[#3a3a3a] rounded mt-2';
-        textureBtn.innerHTML = '<i class="fas fa-chess-board text-[20px]"></i>';
-        textureBtn.title = "Texture Settings";
-        textureBtn.onclick = toggleTexturePanel;
-        if(leftToolbar) leftToolbar.appendChild(textureBtn);
-
-        // Create Texture Panel
-        const panel = document.createElement('div');
-        panel.id = 'texturePanel';
-        panel.className = 'fixed right-[320px] top-[60px] w-[300px] bg-[#252525] border border-[#555] text-[#c0c0c0] p-4 rounded shadow-lg hidden z-50 max-h-[80vh] overflow-y-auto';
-        panel.innerHTML = `
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="font-bold text-white">Texture Settings</h3>
-                <button onclick="document.getElementById('texturePanel').classList.add('hidden')" class="text-red-500"><i class="fas fa-times"></i></button>
-            </div>
-            
-            <div class="mb-3">
-                <label class="flex items-center space-x-2">
-                    <input type="checkbox" id="textureEnabled" class="form-checkbox bg-[#1e1e1e] border-[#555]">
-                    <span>Enable Texture</span>
-                </label>
-            </div>
-
-            <div class="mb-3">
-                <label class="block text-xs mb-1">Source</label>
-                <select id="textureSource" class="w-full bg-[#1e1e1e] border border-[#555] rounded px-2 py-1 text-sm">
-                    <option value="pattern">Pattern</option>
-                    <option value="image">Image File</option>
-                    <option value="noise">Noise</option>
-                </select>
-            </div>
-
-            <div id="texturePatternControl" class="mb-3">
-                <label class="block text-xs mb-1">Select Texture</label>
-                <div id="textureGrid" class="grid grid-cols-4 gap-2 max-h-[150px] overflow-y-auto border border-[#555] p-1 rounded bg-[#1e1e1e]">
-                    <div class="text-xs text-gray-500 col-span-4 text-center">Loading textures...</div>
-                </div>
-                <input type="hidden" id="texturePatternId" value="1">
-            </div>
-
-            <div class="mb-3">
-                <label class="block text-xs mb-1">Blend Mode</label>
-                <select id="textureBlendMode" class="w-full bg-[#1e1e1e] border border-[#555] rounded px-2 py-1 text-sm">
-                    <option value="source-over">Normal</option>
-                    <option value="multiply">Multiply</option>
-                    <option value="screen">Screen</option>
-                    <option value="overlay">Overlay</option>
-                    <option value="soft-light">Soft Light</option>
-                    <option value="hard-light">Hard Light</option>
-                    <option value="color-dodge">Color Dodge</option>
-                    <option value="color-burn">Color Burn</option>
-                    <option value="difference">Difference</option>
-                    <option value="exclusion">Exclusion</option>
-                </select>
-            </div>
-
-            <div class="grid grid-cols-2 gap-2 mb-3">
-                <div>
-                    <label class="block text-xs mb-1">Opacity (%)</label>
-                    <input type="number" id="textureOpacity" value="100" min="0" max="100" class="w-full bg-[#1e1e1e] border border-[#555] rounded px-2 py-1 text-sm">
-                </div>
-                <div>
-                    <label class="block text-xs mb-1">Scale (%)</label>
-                    <input type="number" id="textureScale" value="100" min="1" max="500" class="w-full bg-[#1e1e1e] border border-[#555] rounded px-2 py-1 text-sm">
-                </div>
-            </div>
-
-            <div class="mb-3">
-                <label class="block text-xs mb-1">Angle (°)</label>
-                <input type="range" id="textureAngle" min="0" max="360" value="0" class="w-full">
-            </div>
-
-            <div class="mb-3">
-                <label class="block text-xs mb-1">Spacing (Brush) (%)</label>
-                <input type="range" id="textureSpacing" min="1" max="200" value="10" class="w-full">
-            </div>
-
-            <div class="mb-3">
-                <label class="block text-xs mb-1">Scatter (Brush)</label>
-                <input type="range" id="textureScatter" min="0" max="100" value="0" class="w-full">
-            </div>
-
-            <button id="applyTextureToSelection" class="w-full bg-[#00aaff] hover:bg-[#0088cc] text-white rounded py-1 mt-2 text-sm">
-                Apply to Selection
+        <button onclick="copySelectedElement()" class="p-1 hover:bg-gray-700 rounded" title="Copier">
+            📋
+        </button>
+        <button onclick="deleteSelectedElement()" class="p-1 hover:bg-gray-700 rounded" title="Supprimer">
+            🗑️
+        </button>
+        <button onclick="showElementProperties()" class="p-1 hover:bg-gray-700 rounded" title="Propriétés">
+            ⚙️
+        </button>
+        <div class="relative inline-block">
+            <button onclick="toggleRotationPopup()" class="p-1 hover:bg-gray-700 rounded" title="Rotation">
+                🔄
             </button>
-        `;
-        document.body.appendChild(panel);
+            <div id="rotationPopup" class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden bg-gray-800 p-2 rounded shadow-lg border border-gray-600 w-48 z-50">
+                <div class="text-xs text-center mb-1">Rotation: <span id="rotationValueDisplay">${element.rotation || 0}</span>°</div>
+                <input type="range" min="0" max="360" value="${element.rotation || 0}" class="w-full mb-2" oninput="updateElementRotation(this.value)">
+                <div class="flex justify-between gap-2">
+                    <button onclick="cancelRotation()" class="flex-1 text-red-500 hover:text-red-400 text-xs px-2 py-1 border border-red-500 rounded bg-transparent">✕ Annuler</button>
+                    <button onclick="validateRotation()" class="flex-1 text-green-500 hover:text-green-400 text-xs px-2 py-1 border border-green-500 rounded bg-transparent">✓ Valider</button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(popup);
+    
+    // Stocker l'élément actuellement sélectionné
+    window.currentSelectedTextElement = element;
+}
 
-        // Fetch Textures
-        fetch('propaint.php?action=list_textures')
-            .then(r => r.json())
-            .then(files => {
-                const grid = document.getElementById('textureGrid');
-                grid.innerHTML = '';
-                if (!files || files.length === 0) {
-                    files = [];
-                    for(let i=1; i<=20; i++) {
-                        files.push(`texture/texture${i}.png`);
-                    }
-                }
-                
-                files.forEach((file, index) => {
-                    const div = document.createElement('div');
-                    div.className = 'cursor-pointer border border-transparent hover:border-blue-500 p-1 rounded flex flex-col items-center';
-                    div.innerHTML = `
-                        <div class="w-8 h-8 bg-gray-700 mb-1 bg-cover bg-center" style="background-image: url('${file}')"></div>
-                        <span class="text-[8px] truncate w-full text-center">${file.split('/').pop().split('.')[0]}</span>
-                    `;
-                    div.onclick = () => {
-                        document.querySelectorAll('#textureGrid > div').forEach(d => d.classList.remove('border-blue-500', 'bg-[#333]'));
-                        div.classList.add('border-blue-500', 'bg-[#333]');
-                        const match = file.match(/texture(\d+)/i);
-                        const id = match ? parseInt(match[1]) : index + 1;
-                        document.getElementById('texturePatternId').value = id;
-                        window.textureOptions.patternId = id;
-                        window.textureOptions.filename = file;
-                        updateSelectedElementTexture();
-                    };
-                    grid.appendChild(div);
-                });
-            })
-            .catch(e => {
-                console.error("Error loading textures", e);
-                document.getElementById('textureGrid').innerHTML = '<div class="text-red-500 text-xs">Error loading textures</div>';
-            });
-
-        // Event Listeners
-        const updateTextureState = () => {
-            const currentFilename = window.textureOptions ? window.textureOptions.filename : null;
-            window.textureOptions = {
-                filename: currentFilename,
-                enabled: document.getElementById('textureEnabled').checked,
-                source: document.getElementById('textureSource').value,
-                patternId: parseInt(document.getElementById('texturePatternId').value),
-                blendMode: document.getElementById('textureBlendMode').value,
-                opacity: parseInt(document.getElementById('textureOpacity').value),
-                scale: parseInt(document.getElementById('textureScale').value),
-                angle: parseInt(document.getElementById('textureAngle').value),
-                spacing: parseInt(document.getElementById('textureSpacing') ? document.getElementById('textureSpacing').value : 10),
-                scatter: parseInt(document.getElementById('textureScatter') ? document.getElementById('textureScatter').value : 0),
-                jitter: parseInt(document.getElementById('textureJitter') ? document.getElementById('textureJitter').value : 0),
-                angleRandom: document.getElementById('textureAngleRandom') ? document.getElementById('textureAngleRandom').checked : false
-            };
-            updateSelectedElementTexture();
-        };
-
-        ['textureEnabled', 'textureSource', 'texturePatternId', 'textureBlendMode', 'textureOpacity', 'textureScale', 'textureAngle', 'textureSpacing', 'textureScatter', 'textureJitter', 'textureAngleRandom'].forEach(id => {
-            const el = document.getElementById(id);
-            if(el) el.addEventListener('input', updateTextureState);
-        });
-        
-        // Also bind apply button if it exists (removed in new UI but kept for compatibility if needed)
-        const applyBtn = document.getElementById('applyTextureToSelection');
-        if(applyBtn) applyBtn.addEventListener('click', updateSelectedElementTexture);
+// 2. CORRECTION: Bug du deuxième texte qui disparaît visuellement
+// Modifier la fonction de dessin du texte pour éviter les conflits
+function drawTextElementFixed(ctx, textElement, opts = {}) {
+    if (!textElement || !textElement.text) return;
+    
+    ctx.save();
+    
+    // Appliquer la rotation
+    if (textElement.rotation && textElement.rotation !== 0) {
+        const centerX = textElement.x + textElement.width / 2;
+        const centerY = textElement.y + textElement.height / 2;
+        ctx.translate(centerX, centerY);
+        ctx.rotate((textElement.rotation * Math.PI) / 180);
+        ctx.translate(-centerX, -centerY);
     }
+    
+    // **FIX: Assurer une opacité correcte**
+    const opacity = typeof textElement.opacity === 'number' ? 
+                   Math.max(0, Math.min(1, textElement.opacity)) : 1;
+    
+    // Dessiner l'arrière-plan
+    if (textElement.hasBackground && textElement.backgroundColor) {
+        ctx.fillStyle = textElement.backgroundColor;
+        ctx.globalAlpha = (textElement.backgroundOpacity || 1) * opacity;
+        ctx.fillRect(textElement.x, textElement.y, textElement.width, textElement.height);
+    }
+    
+    // Configurer la police
+    let fontStyle = '';
+    if (textElement.style) {
+        if (textElement.style.includes('bold')) fontStyle += 'bold ';
+        if (textElement.style.includes('italic')) fontStyle += 'italic ';
+    }
+    
+    ctx.font = `${fontStyle}${textElement.fontSize}px ${textElement.fontFamily}`;
+    ctx.fillStyle = textElement.color || '#000000';
+    ctx.globalAlpha = opacity;
+    ctx.textBaseline = 'top';
+    
+    // Gérer l'alignement et le texte multi-lignes
+    const lines = textElement.text.split('\n');
+    const lineHeight = textElement.fontSize * 1.2;
+    
+    lines.forEach((line, index) => {
+        let drawX = textElement.x;
+        if (textElement.align === 'center') {
+            drawX = textElement.x + textElement.width / 2;
+            ctx.textAlign = 'center';
+        } else if (textElement.align === 'right') {
+            drawX = textElement.x + textElement.width;
+            ctx.textAlign = 'right';
+        } else {
+            ctx.textAlign = 'left';
+        }
+        
+        ctx.fillText(line, drawX, textElement.y + (index * lineHeight));
+    });
+    
+    // Dessiner la bordure de sélection si actif
+    if (activeTextElement && activeTextElement.id === textElement.id) {
+        ctx.strokeStyle = '#00aaff';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 4]);
+        ctx.strokeRect(textElement.x, textElement.y, textElement.width, textElement.height);
+        ctx.setLineDash([]);
+    }
+    
+    ctx.restore();
+}
 
-    function updateSelectedElementTexture() {
-        if (window.selectedElement) {
-            window.selectedElement.texture = JSON.parse(JSON.stringify(window.textureOptions));
-            redrawAll();
-        } else if (window.activeTextElement) {
-            window.activeTextElement.texture = JSON.parse(JSON.stringify(window.textureOptions));
-            redrawAll();
-        } else if (window.selectedDrawingStrokeId) {
-             const stroke = drawingStrokes.find(s => s.id === window.selectedDrawingStrokeId);
-             if (stroke) {
-                 stroke.texture = JSON.parse(JSON.stringify(window.textureOptions));
-                 redrawAll();
-             }
+// Remplacer la fonction de dessin du texte
+window.drawTextElement = drawTextElementFixed;
+
+// 3. CORRECTION: Gradient pour les dessins (couleur diluée)
+function createDrawingGradient(ctx, x, y, width, height, angle, colors) {
+    const rad = angle * Math.PI / 180;
+    const x0 = x + width/2 - Math.cos(rad) * width/2;
+    const y0 = y + height/2 - Math.sin(rad) * height/2;
+    const x1 = x + width/2 + Math.cos(rad) * width/2;
+    const y1 = y + height/2 + Math.sin(rad) * height/2;
+    
+    const gradient = ctx.createLinearGradient(x0, y0, x1, y1);
+    
+    if (colors.length === 1) {
+        gradient.addColorStop(0, colors[0]);
+        gradient.addColorStop(1, colors[0]);
+    } else if (colors.length === 2) {
+        gradient.addColorStop(0, colors[0]);
+        gradient.addColorStop(1, colors[1]);
+    } else {
+        // Pour plusieurs couleurs
+        colors.forEach((color, index) => {
+            gradient.addColorStop(index / (colors.length - 1), color);
+        });
+    }
+    
+    return gradient;
+}
+
+// Modifier la fonction getCurrentDrawColor pour les dessins
+const originalGetCurrentDrawColor = window.getCurrentDrawColor;
+window.getCurrentDrawColor = function() {
+    if (colorModeSelect.value === 'solid') {
+        return document.getElementById('color1rgba').value;
+    } else {
+        // Pour les dessins, créer un gradient spécifique
+        const colors = getAllColors();
+        return createDrawingGradient(ctx, 0, 0, canvas.width, canvas.height, gradientAngle, 
+                                    colors.map(c => rgbaToString(c)));
+    }
+};
+
+// 4. CORRECTION: Gradient pour le texte
+function applyTextGradient(ctx, textElement, gradient) {
+    ctx.fillStyle = gradient;
+    
+    // Configurer la police
+    let fontStyle = '';
+    if (textElement.style) {
+        if (textElement.style.includes('bold')) fontStyle += 'bold ';
+        if (textElement.style.includes('italic')) fontStyle += 'italic ';
+    }
+    
+    ctx.font = `${fontStyle}${textElement.fontSize}px ${textElement.fontFamily}`;
+    ctx.textBaseline = 'top';
+    
+    // Gérer l'alignement et le texte multi-lignes
+    const lines = textElement.text.split('\n');
+    const lineHeight = textElement.fontSize * 1.2;
+    
+    lines.forEach((line, index) => {
+        let drawX = textElement.x;
+        if (textElement.align === 'center') {
+            drawX = textElement.x + textElement.width / 2;
+            ctx.textAlign = 'center';
+        } else if (textElement.align === 'right') {
+            drawX = textElement.x + textElement.width;
+            ctx.textAlign = 'right';
+        } else {
+            ctx.textAlign = 'left';
+        }
+        
+        ctx.fillText(line, drawX, textElement.y + (index * lineHeight));
+    });
+}
+
+// 5. CORRECTION: Formes manquantes (cercle, carré, triangle, etc.)
+function drawShapeFixed(ctx, s) {
+    if (!s || !s.type) return;
+    
+    ctx.save();
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    
+    // Appliquer la rotation si définie
+    if (s.rotation && s.rotation !== 0) {
+        const centerX = s.x + s.w / 2;
+        const centerY = s.y + s.h / 2;
+        ctx.translate(centerX, centerY);
+        ctx.rotate((s.rotation * Math.PI) / 180);
+        ctx.translate(-centerX, -centerY);
+    }
+    
+    // Déterminer la couleur/opacité
+    let finalColor = s.fillColor || s.color || '#000000';
+    let finalOpacity = (typeof s.opacity === 'number') ? s.opacity : (opacityInput ? parseFloat(opacityInput.value) : 1);
+    
+    // Appliquer le gradient si activé
+    if (s.fillMode === 'gradient' && colorModeSelect.value === 'gradient') {
+        const colors = getAllColors();
+        finalColor = createDrawingGradient(ctx, s.x, s.y, s.w, s.h, gradientAngle, 
+                                          colors.map(c => rgbaToString(c)));
+    }
+    
+    // Appliquer opacité
+    ctx.globalAlpha = Math.max(0, Math.min(1, finalOpacity));
+    
+    // Style de forme
+    const shapeStyle = s.shapeStyle || 'flat-fill';
+    
+    try {
+        ctx.beginPath();
+        
+        // **FIX: Formes de base corrigées**
+        if(s.type === 'rectangle') {
+            if (s.borderRadius && s.borderRadius > 0) {
+                drawRoundedRect(ctx, s.x, s.y, s.w, s.h, s.borderRadius);
+            } else {
+                ctx.rect(s.x, s.y, s.w, s.h);
+            }
+        } else if(s.type === 'circle') {
+            const centerX = s.x + s.w / 2;
+            const centerY = s.y + s.h / 2;
+            const radius = Math.min(Math.abs(s.w), Math.abs(s.h)) / 2;
+            ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+        } else if(s.type === 'triangle') {
+            ctx.moveTo(s.x + s.w / 2, s.y);
+            ctx.lineTo(s.x + s.w, s.y + s.h);
+            ctx.lineTo(s.x, s.y + s.h);
+            ctx.closePath();
+        } else if(s.type === 'line') {
+            ctx.beginPath();
+            ctx.moveTo(s.x, s.y);
+            ctx.lineTo(s.x + s.w, s.y + s.h);
+            
+            // Pour les lignes, utiliser stroke au lieu de fill
+            ctx.strokeStyle = finalColor;
+            ctx.lineWidth = s.outlineThickness || s.size || 1;
+            ctx.stroke();
+            ctx.restore();
+            return;
+        } else if(s.type === 'ellipse') {
+            const centerX = s.x + s.w / 2;
+            const centerY = s.y + s.h / 2;
+            const radiusX = Math.abs(s.w) / 2;
+            const radiusY = Math.abs(s.h) / 2;
+            ctx.ellipse(centerX, centerY, radiusX, radiusY, 0, 0, 2 * Math.PI);
+        } else if(s.type === 'diamond') {
+            ctx.moveTo(s.x + s.w / 2, s.y);
+            ctx.lineTo(s.x + s.w, s.y + s.h / 2);
+            ctx.lineTo(s.x + s.w / 2, s.y + s.h);
+            ctx.lineTo(s.x, s.y + s.h / 2);
+            ctx.closePath();
+        } else if(s.type === 'point') {
+            ctx.arc(s.x, s.y, s.size || 1, 0, 2 * Math.PI);
+        } else {
+            // Pour les autres formes, utiliser le rectangle par défaut
+            ctx.rect(s.x, s.y, s.w, s.h);
+        }
+        
+        // Appliquer le style de forme
+        if (s.outlineOnly) {
+            ctx.strokeStyle = finalColor;
+            ctx.lineWidth = s.outlineThickness || 1;
+            ctx.stroke();
+        } else {
+            ctx.fillStyle = finalColor;
+            ctx.fill();
+        }
+        
+    } catch(e) {
+        console.warn('Erreur lors du dessin de la forme:', e, s);
+    }
+    
+    ctx.restore();
+}
+
+// Remplacer la fonction de dessin des formes
+window.drawShape = drawShapeFixed;
+
+// 6. CORRECTION: Point de base qui se déplace lors du déploiement des formes
+// Modifier la gestion du dessin des formes pour garder le point de départ fixe
+canvas.onpointerdown = function(e) {
+    if(!imageLoaded) return;
+    
+    // Ignorer clic droit (réservé pour la navigation)
+    if (e.button === 2) return;
+    
+    const pos = getScaledPointerPos(e);
+    
+    // **FIX: Stocker le point de départ ABSOLU pour les formes**
+    window.shapeStartPoint = {x: pos.x, y: pos.y};
+    
+    // ... reste du code existant ...
+};
+
+// Modifier la logique de dessin des formes pour utiliser le point de départ fixe
+canvas.onpointermove = function(e) {
+    // ... code existant ...
+    
+    if(currentTool.startsWith('shape-')){
+        redrawAll();
+        const shapeType = currentTool.replace('shape-','');
+        const startPoint = window.shapeStartPoint || {x: startX, y: startY};
+        const x = Math.min(startPoint.x, pos.x);
+        const y = Math.min(startPoint.y, pos.y);
+        const w = Math.abs(pos.x - startPoint.x);
+        const h = Math.abs(pos.y - startPoint.y);
+        const color = getCurrentDrawColor();
+        drawShape(ctx, {type: shapeType, x, y, w, h, size: brushSize, color});
+        e.preventDefault();
+    }
+};
+
+// 7. CORRECTION: Précision du brush à 1px
+// Modifier la fonction de dessin pour une précision pixel parfaite
+function drawPixelPerfectLine(ctx, x1, y1, x2, y2, size, color) {
+    // **FIX: Pour une taille de 1px, dessiner exactement 1 pixel**
+    if (size <= 1) {
+        ctx.fillStyle = color;
+        ctx.fillRect(Math.round(x1), Math.round(y1), 1, 1);
+        return;
+    }
+    
+    // Pour les tailles plus grandes, utiliser le tracé normal
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = size;
+    ctx.strokeStyle = color;
+    
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+}
+
+// Intégrer dans la fonction drawLine
+const originalDrawLineFunction = window.drawLine;
+window.drawLine = function(ctx, x1, y1, x2, y2, tool, size, color) {
+    // Pour les outils de dessin basique, utiliser la précision pixel
+    if (tool === 'brush-basic' || tool === 'brush-pencil') {
+        drawPixelPerfectLine(ctx, x1, y1, x2, y2, size, color);
+    } else {
+        // Pour les autres outils, utiliser le comportement original
+        originalDrawLineFunction(ctx, x1, y1, x2, y2, tool, size, color);
+    }
+};
+
+// 8. CORRECTION: Calibrage du pointeur pour une précision parfaite
+function getPerfectPointerPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    
+    // **FIX: Calcul précis avec prise en compte des bordures et paddings**
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    
+    // Position relative précise
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
+    
+    // Limiter et arrondir pour la précision pixel
+    return {
+        x: Math.max(0, Math.min(canvas.width, Math.round(x))),
+        y: Math.max(0, Math.min(canvas.height, Math.round(y)))
+    };
+}
+
+// Remplacer getScaledPointerPos
+window.getScaledPointerPos = getPerfectPointerPos;
+
+// 9. CORRECTION: Affichage visuel pendant le dessin (avant relâchement du clic)
+// Modifier la logique de dessin pour afficher immédiatement
+canvas.onpointermove = function(e) {
+    // ... code existant ...
+    
+    if(currentTool.startsWith('brush') && isDrawing){
+        const pos = getScaledPointerPos(e);
+        const color = getCurrentDrawColor();
+        
+        // **FIX: Dessiner immédiatement sur le canvas principal**
+        drawLine(ctx, lastPoint.x, lastPoint.y, pos.x, pos.y, currentTool, brushSize, color);
+        
+        // **FIX: Ajouter aussi au stroke en cours pour le système de layers**
+        if (!currentDrawingStroke) {
+            currentDrawingStroke = {
+                id: 'id-' + Math.random().toString(36).substr(2, 9),
+                points: [{x: lastPoint.x, y: lastPoint.y}, {x: pos.x, y: pos.y}],
+                tool: currentTool,
+                size: brushSize,
+                color: color,
+                timestamp: Date.now()
+            };
+        } else {
+            currentDrawingStroke.points.push({x: pos.x, y: pos.y});
+        }
+        
+        lastPoint = pos;
+        e.preventDefault();
+        return;
+    }
+    
+    // ... reste du code ...
+};
+
+// 10. CORRECTION: Initialisation de la sélection pour les textes
+// Ajouter un event listener pour sélectionner le texte depuis les calques
+document.addEventListener('click', function(e) {
+    const layersList = document.getElementById('layersList');
+    if (layersList && layersList.contains(e.target)) {
+        const li = e.target.closest('li[data-layer-id]');
+        if (li) {
+            const layerId = li.dataset.layerId;
+            const layer = window.layersPanelAPI.layers.find(l => l.id === layerId);
+            
+            if (layer && layer.type === 'text') {
+                // **FIX: Afficher la popup de sélection pour le texte**
+                const rect = canvas.getBoundingClientRect();
+                const popupX = rect.left + layer.ref.x + 100;
+                const popupY = rect.top + layer.ref.y - 40;
+                
+                createTextSelectionPopup(popupX, popupY, layer.ref);
+                
+                // Sélectionner l'élément
+                selectTextElement(layer.ref);
+            }
         }
     }
+});
 
-    function toggleTexturePanel() {
-        const panel = document.getElementById('texturePanel');
-        panel.classList.toggle('hidden');
-    }
-
-    document.addEventListener('DOMContentLoaded', initTextureUI);
+// 11. CORRECTION: Système de rotation pour les textes depuis la popup
+window.updateElementRotation = function(angle) {
+    if (!window.currentSelectedTextElement) return;
     
-    // Initialiser la visibilité du panneau de textures
-    document.addEventListener('DOMContentLoaded', () => {
-      updateTexturePanelVisibility();
-    });
-</script>
+    const element = window.currentSelectedTextElement;
+    angle = parseFloat(angle);
+    
+    // Mettre à jour l'affichage
+    const display = document.getElementById('rotationValueDisplay');
+    if (display) display.textContent = Math.round(angle);
+    
+    // Mettre à jour l'élément
+    element.rotation = angle;
+    
+    // Redessiner
+    redrawAll();
+};
+
+window.toggleRotationPopup = function() {
+    const popup = document.getElementById('rotationPopup');
+    if (popup.classList.contains('hidden')) {
+        popup.classList.remove('hidden');
+        // Stocker la rotation initiale
+        if (window.currentSelectedTextElement) {
+            window.initialRotation = window.currentSelectedTextElement.rotation || 0;
+        }
+    } else {
+        popup.classList.add('hidden');
+    }
+};
+
+window.validateRotation = function() {
+    const popup = document.getElementById('rotationPopup');
+    if(popup) popup.classList.add('hidden');
+    saveState(); // Sauvegarder l'état
+};
+
+window.cancelRotation = function() {
+    const popup = document.getElementById('rotationPopup');
+    if(popup) popup.classList.add('hidden');
+    if (window.currentSelectedTextElement) {
+        updateElementRotation(window.initialRotation);
+        const slider = document.querySelector('#rotationPopup input[type=range]');
+        if (slider) slider.value = window.initialRotation;
+    }
+};
+
+// 12. CORRECTION: Gestion des événements pour fermer la popup
+document.addEventListener('click', function(e) {
+    const popup = document.getElementById('textSelectionPopup');
+    const rotationPopup = document.getElementById('rotationPopup');
+    
+    // Fermer la popup de rotation si on clique ailleurs
+    if (rotationPopup && !rotationPopup.contains(e.target) && 
+        !e.target.closest('button[onclick*="toggleRotationPopup"]')) {
+        rotationPopup.classList.add('hidden');
+    }
+    
+    // Fermer la popup principale si on clique ailleurs (sauf sur les éléments de texte)
+    if (popup && !popup.contains(e.target)) {
+        const isTextElement = e.target.closest('#layersList li') || 
+                             (activeTextElement && canvas.contains(e.target));
+        
+        if (!isTextElement) {
+            popup.remove();
+            window.currentSelectedTextElement = null;
+        }
+    }
+});
+
+// 13. CORRECTION: Initialisation du canvas avec fond transparent
+window.addEventListener('load', function() {
+    // Attendre que tout soit chargé
+    setTimeout(function() {
+        if (!imageLoaded && canvas) {
+            // **FIX: Initialiser avec un fond transparent au lieu de blanc**
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Marquer comme chargé
+            imageLoaded = true;
+            
+            // Activer le bouton de download
+            const downloadBtn = document.getElementById('downloadBtn');
+            if (downloadBtn) {
+                downloadBtn.disabled = false;
+            }
+            
+            console.log('✅ Canvas initialisé avec succès');
+        }
+    }, 100);
+});
+
+// ==== FIN DES CORRECTIONS ====
+console.log('✅ Correctifs appliqués avec succès');
+  </script> 
 </body>
 </html>
